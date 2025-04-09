@@ -194,7 +194,7 @@ class CycloneDxReporter(
                 bom.addComponent(input, pkg, dependencyType)
             }
 
-            bom.addDependencies(input, bom.metadata.component.bomRef, allDirectDependencies)
+            // bom.addDependencies(input, bom.metadata.component.bomRef, allDirectDependencies)
 
             bom.addVulnerabilities(input.ortResult.getVulnerabilities())
 
@@ -260,7 +260,7 @@ class CycloneDxReporter(
                     bom.addComponent(input, pkg, dependencyType)
                 }
 
-                bom.addDependencies(input, bom.metadata.component.bomRef, directDependencies)
+                // bom.addDependencies(input, bom.metadata.component.bomRef, directDependencies)
 
                 bom.addVulnerabilities(input.ortResult.getVulnerabilities())
 

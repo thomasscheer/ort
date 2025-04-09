@@ -606,6 +606,6 @@ USER $USER
 WORKDIR $HOME
 
 # Ensure that these directories exist in the container to be able to mount directories from the host into them with correct permissions.
-RUN mkdir -p "$HOME/.ort" "$HOME/.gradle"
+RUN mkdir -p "$HOME/.ort" "$HOME/.gradle" "$HOME/.m2"
 
 ENTRYPOINT ["/opt/ort/bin/ort"]
