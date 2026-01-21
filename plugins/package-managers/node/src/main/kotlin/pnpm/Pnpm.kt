@@ -48,21 +48,16 @@ import org.semver4j.range.RangeListFactory
 
 data class PnPMConfig(
     /**
-     * The version of PNPM to use when analyzing projects. Defaults to the version 10.24.0
-     */
-    val pnpmVersion: String?,
-
-    /**
      * Ignore "pnpmfile" when analyzing projects. Defaults to "--ignore-pnpmfile"
      */
     @OrtPluginOption(defaultValue = "true")
-    val ignore_pnpmfile: Boolean,
+    val ignorePnpmfile: Boolean,
 
     /**
      * Ignore "pnpmfile" when analyzing projects. Defaults to ""--ignore-scripts"
      */
     @OrtPluginOption(defaultValue = "true")
-    val ignore_scripts: Boolean,
+    val ignoreScripts: Boolean,
 
     
 )
@@ -184,8 +179,8 @@ class Pnpm(override val descriptor: PluginDescriptor = PnpmFactory.descriptor, p
         
         val args = listOfNotNull(
             "install",
-            "--ignore-pnpmfile".takeIf { config.ignore_pnpmfile },
-            "--ignore-scripts".takeIf { config.ignore_scripts },
+            "--ignore-pnpmfile".takeIf { config.ignorePnpmfile },
+            "--ignore-scripts".takeIf { config.ignoreScripts },
             "--frozen-lockfile", // Use the existing lockfile instead of updating an outdated one.
             "--prod".takeUnless { Scope.DEV_DEPENDENCIES in scopes }
         )
