@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 The ORT Project Copyright Holders <https://github.com/oss-review-toolkit/ort/blob/main/NOTICE>
+ * Copyright (C) 2026 The ORT Project Copyright Holders <https://github.com/oss-review-toolkit/ort/blob/main/NOTICE>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,18 +17,22 @@
  * License-Filename: LICENSE
  */
 
-package org.ossreviewtoolkit.plugins.reporters.evaluatedmodel
+import TextLocation from './TextLocation';
 
-import java.time.Instant
+class Given {
+    #sourceLocation;
 
-import org.ossreviewtoolkit.model.OrtResult
+    constructor(obj) {
+        if (obj instanceof Object) {
+            if (obj.sourceLocation) {
+                this.sourceLocation = new TextLocation(obj.sourceLocation);
+            }
+        }
+    }
 
-/**
- * This class calculates [Metadata] for a given [OrtResult].
- */
-internal class MetadataCalculator {
-    fun getMetadata(ortResult: OrtResult) =
-        Metadata(
-            analyzerStartTime = ortResult.analyzer?.startTime ?: Instant.now()
-        )
+    get sourceLocation() {
+        return this.#sourceLocation;
+    }
 }
+
+export default Given;

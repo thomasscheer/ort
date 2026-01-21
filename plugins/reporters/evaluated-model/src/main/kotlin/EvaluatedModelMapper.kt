@@ -25,6 +25,8 @@ import org.ossreviewtoolkit.model.DependencyNode
 import org.ossreviewtoolkit.model.Identifier
 import org.ossreviewtoolkit.model.Issue
 import org.ossreviewtoolkit.model.LicenseFinding
+import org.ossreviewtoolkit.model.OrtResult
+import org.ossreviewtoolkit.model.PackageCuration
 import org.ossreviewtoolkit.model.PackageLinkage
 import org.ossreviewtoolkit.model.Project
 import org.ossreviewtoolkit.model.Provenance
@@ -38,6 +40,7 @@ import org.ossreviewtoolkit.model.VcsInfo
 import org.ossreviewtoolkit.model.config.Excludes
 import org.ossreviewtoolkit.model.config.IssueResolution
 import org.ossreviewtoolkit.model.config.LicenseFindingCuration
+import org.ossreviewtoolkit.model.config.PackageConfiguration
 import org.ossreviewtoolkit.model.config.PathExclude
 import org.ossreviewtoolkit.model.config.RepositoryConfiguration
 import org.ossreviewtoolkit.model.config.Resolutions
@@ -59,7 +62,7 @@ import org.ossreviewtoolkit.utils.spdx.calculatePackageVerificationCode
 /**
  * Maps the [reporter input][input] to an [EvaluatedModel].
  */
-@Suppress("TooManyFunctions")
+@Suppress("LargeClass", "TooManyFunctions")
 internal class EvaluatedModelMapper(private val input: ReporterInput) {
     private val packages = mutableMapOf<Identifier, EvaluatedPackage>()
     private val paths = mutableListOf<EvaluatedPackagePath>()
@@ -67,9 +70,12 @@ internal class EvaluatedModelMapper(private val input: ReporterInput) {
     private val scanResults = mutableListOf<EvaluatedScanResult>()
     private val copyrights = mutableListOf<CopyrightStatement>()
     private val licenses = mutableListOf<LicenseId>()
+    private val licenseFindingCurations = mutableListOf<LicenseFindingCuration>()
     private val scopes = mutableMapOf<String, EvaluatedScope>()
     private val issues = mutableListOf<EvaluatedIssue>()
     private val issueResolutions = mutableListOf<IssueResolution>()
+    private val packageConfigurations = mutableListOf<PackageConfiguration>()
+    private val packageCurations = mutableListOf<PackageCuration>()
     private val pathExcludes = mutableListOf<PathExclude>()
     private val scopeExcludes = mutableListOf<ScopeExclude>()
     private val ruleViolations = mutableListOf<EvaluatedRuleViolation>()
@@ -88,6 +94,25 @@ internal class EvaluatedModelMapper(private val input: ReporterInput) {
     )
 
     private val packageExcludeInfo = mutableMapOf<Identifier, PackageExcludeInfo>()
+
+    /**
+     * Associates curations in the order they have been applied for the corresponding curated package.
+     */
+    private val curationsForId: Map<Identifier, List<PackageCuration>> by lazy {
+        val allCurations = input.ortResult.resolvedConfiguration.packageCurations.flatMap { it.curations }
+
+        buildMap {
+            input.ortResult.getPackages().forEach { curatedPackage ->
+                val curationForCurationData = allCurations.filter {
+                    it.isApplicable(curatedPackage.metadata.id)
+                }.associateBy { it.data }
+
+                this[curatedPackage.metadata.id] = curatedPackage.curations.map { curationData ->
+                    curationForCurationData.getValue(curationData)
+                }
+            }
+        }
+    }
 
     /**
      * Build an [EvaluatedModel] instance. If [deduplicateDependencyTree] is *true*, remove duplicate subtrees from
@@ -139,9 +164,12 @@ internal class EvaluatedModelMapper(private val input: ReporterInput) {
             issues = issues,
             copyrights = copyrights,
             licenses = licenses,
+            licenseFindingCurations = licenseFindingCurations,
             scopes = scopes.values.toList(),
             scanResults = scanResults,
             packages = packages.values.toList(),
+            packageConfigurations = packageConfigurations,
+            packageCurations = packageCurations,
             paths = paths,
             dependencyTrees = dependencyTrees,
             ruleViolationResolutions = ruleViolationResolutions,
@@ -154,7 +182,7 @@ internal class EvaluatedModelMapper(private val input: ReporterInput) {
             severeRuleViolationThreshold = input.ortConfig.severeRuleViolationThreshold,
             repositoryConfiguration = input.ortResult.repository.config.toYaml(),
             labels = input.ortResult.labels,
-            metadata = MetadataCalculator().getMetadata(input.ortResult)
+            toolsMetadata = ToolsMetadataCalculator().getMetadata(input.ortResult)
         )
     }
 
@@ -263,7 +291,9 @@ internal class EvaluatedModelMapper(private val input: ReporterInput) {
             sourceArtifact = RemoteArtifact.EMPTY,
             vcs = project.vcs,
             vcsProcessed = project.vcsProcessed,
+            labels = emptyMap(),
             curations = emptyList(),
+            packageConfigurations = emptyList(),
             paths = mutableListOf(),
             levels = sortedSetOf(0),
             scopes = mutableSetOf(),
@@ -303,9 +333,16 @@ internal class EvaluatedModelMapper(private val input: ReporterInput) {
         val issues = mutableListOf<EvaluatedIssue>()
 
         val excludeInfo = packageExcludeInfo.getValue(pkg.id)
+        val packageConfigurations = input.ortResult.getPackageConfigurations(pkg.id).map {
+            it.copy(
+                pathExcludes = pathExcludes.addIfRequired(it.pathExcludes),
+                licenseFindingCurations = licenseFindingCurations.addIfRequired(it.licenseFindingCurations)
+            )
+        }.let { packageConfigurations.addIfRequired(it) }
 
         val evaluatedPathExcludes = pathExcludes.addIfRequired(excludeInfo.pathExcludes)
         val evaluatedScopeExcludes = scopeExcludes.addIfRequired(excludeInfo.scopeExcludes)
+        val curations = packageCurations.addIfRequired(curationsForId.getValue(curatedPkg.metadata.id))
 
         val evaluatedPackage = EvaluatedPackage(
             id = pkg.id,
@@ -329,7 +366,9 @@ internal class EvaluatedModelMapper(private val input: ReporterInput) {
             sourceArtifact = pkg.sourceArtifact,
             vcs = pkg.vcs,
             vcsProcessed = pkg.vcsProcessed,
-            curations = curatedPkg.curations,
+            labels = pkg.labels,
+            curations = curations,
+            packageConfigurations = packageConfigurations,
             paths = mutableListOf(),
             levels = sortedSetOf(),
             scopes = mutableSetOf(),
@@ -588,7 +627,9 @@ internal class EvaluatedModelMapper(private val input: ReporterInput) {
             sourceArtifact = RemoteArtifact.EMPTY,
             vcs = VcsInfo.EMPTY,
             vcsProcessed = VcsInfo.EMPTY,
+            labels = emptyMap(),
             curations = emptyList(),
+            packageConfigurations = emptyList(),
             paths = mutableListOf(),
             levels = sortedSetOf(),
             scopes = mutableSetOf(),
@@ -775,3 +816,8 @@ internal class EvaluatedModelMapper(private val input: ReporterInput) {
         return copy(config = config.copy(excludes = excludes, resolutions = resolutions))
     }
 }
+
+private fun OrtResult.getPackageConfigurations(id: Identifier): List<PackageConfiguration> =
+    getScanResultsForId(id).flatMap { scanResult ->
+        getPackageConfigurations(id, scanResult.provenance)
+    }

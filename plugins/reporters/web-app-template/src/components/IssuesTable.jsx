@@ -169,7 +169,7 @@ const IssuesTable = ({ webAppOrtIssues = [], showExcludesColumn = true }) => {
                 value: 2
             },
             {
-                text: (<Tag color="#b0c4de">Resolved</Tag>),
+                text: (<Tag color="#b0c4de" variant="solid">Resolved</Tag>),
                 value: 10
             }
         ],
@@ -418,7 +418,7 @@ const IssuesTable = ({ webAppOrtIssues = [], showExcludesColumn = true }) => {
                     onChange: handlePaginationChange,
                     pageSize: pagination.pageSize,
                     pageSizeOptions: ['50', '100', '250', '500', '1000', '5000'],
-                    position: 'bottom',
+                    placement: 'bottom',
                     showQuickJumper: true,
                     showSizeChanger: true,
                     showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} issues`

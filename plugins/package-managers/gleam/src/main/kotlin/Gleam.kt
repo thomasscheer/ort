@@ -112,20 +112,7 @@ class Gleam internal constructor(
 
         val project = createProject(definitionFile, gleamToml)
 
-        val manifest = if (manifestFile.isFile) {
-            parseManifest(manifestFile)
-        } else if (!hasDependencies) {
-            GleamManifest.EMPTY
-        } else {
-            issues += Issue(
-                source = projectType,
-                message = "Dependencies were resolved dynamically as no lockfile was present. " +
-                    "Only the latest matching versions of direct dependencies were resolved without " +
-                    "transitive dependency resolution. The results are not reproducible. " +
-                    "Consider running 'gleam deps download' to generate a manifest.toml lockfile."
-            )
-            GleamManifest.EMPTY
-        }
+        val manifest = resolveManifest(manifestFile, hasDependencies, workingDir)
 
         val context = GleamProjectContext(
             hexClient = hexApiClientFactory(),
@@ -141,9 +128,8 @@ class Gleam internal constructor(
         val scopes = Scope.entries.filterNot { scope -> scope.isExcluded(excludes) }
 
         scopes.forEach { scope ->
-            val dependencies = gleamToml.getScopeDependencies(scope).map { (name, dep) ->
-                DependencyPackageInfo(name, dep)
-            }
+            val directDepNames = gleamToml.getScopeDependencies(scope).keys
+            val dependencies = manifest.packages.filter { it.name in directDepNames }
 
             graphBuilder.addDependencies(project.id, scope.descriptor, dependencies)
         }
@@ -159,6 +145,18 @@ class Gleam internal constructor(
 
     override fun createPackageManagerResult(projectResults: Map<File, List<ProjectAnalyzerResult>>) =
         PackageManagerResult(projectResults, graphBuilder.build(), graphBuilder.packages())
+
+    private fun resolveManifest(manifestFile: File, hasDependencies: Boolean, workingDir: File): GleamManifest =
+        when {
+            manifestFile.isFile -> parseManifest(manifestFile)
+
+            !hasDependencies -> GleamManifest.EMPTY
+
+            else -> {
+                GleamCommand.run(workingDir, "deps", "download").requireSuccess()
+                parseManifest(manifestFile)
+            }
+        }
 
     private fun createProject(definitionFile: File, gleamToml: GleamToml): Project {
         val workingDir = definitionFile.parentFile

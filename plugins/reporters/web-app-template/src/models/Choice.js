@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 The ORT Project Copyright Holders <https://github.com/oss-review-toolkit/ort/blob/main/NOTICE>
+ * Copyright (C) 2026 The ORT Project Copyright Holders <https://github.com/oss-review-toolkit/ort/blob/main/NOTICE>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,20 +17,40 @@
  * License-Filename: LICENSE
  */
 
-class Metadata {
-    #analyzerStartTime;
+class Choice {
+    #comment;
+
+    #purl;
+
+    #reason;
 
     constructor(obj) {
         if (obj instanceof Object) {
-            if (obj.analyzer_start_time || obj.analyzerStartTime) {
-                this.#analyzerStartTime = obj.analyzer_start_time || obj.analyzerStartTime;
+            if (obj.comment) {
+                this.#comment = obj.comment;
+            }
+
+            if (obj.purl) {
+                this.#purl = obj.purl;
+            }
+
+            if (obj.reason) {
+                this.#reason = obj.reason;
             }
         }
     }
 
-    get analyzerStartTime() {
-        return this.#analyzerStartTime;
+    get comment() {
+        return this.#comment;
+    }
+
+    get purl() {
+        return this.#purl;
+    }
+
+    get reason() {
+        return this.#reason;
     }
 }
 
-export default Metadata;
+export default Choice;

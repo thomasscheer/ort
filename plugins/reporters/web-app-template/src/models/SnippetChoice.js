@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 The ORT Project Copyright Holders <https://github.com/oss-review-toolkit/ort/blob/main/NOTICE>
+ * Copyright (C) 2026 The ORT Project Copyright Holders <https://github.com/oss-review-toolkit/ort/blob/main/NOTICE>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,16 +17,33 @@
  * License-Filename: LICENSE
  */
 
-package org.ossreviewtoolkit.plugins.reporters.evaluatedmodel
+import Choice from './Choice';
+import Given from './Given';
 
-import java.time.Instant
+class SnippetChoice {
+    #choice;
 
-/**
- * Metadata about the ORT run itself.
- */
-data class Metadata(
-    /**
-     * The time the Analyzer started.
-     */
-    val analyzerStartTime: Instant
-)
+    #given;
+
+    constructor(obj) {
+        if (obj instanceof Object) {
+            if (obj.choice) {
+                this.#choice = new Choice(obj.choice);
+            }
+
+            if (obj.given) {
+                this.#given = new Given(obj.given);
+            }
+        }
+    }
+
+    get choice() {
+        return this.#choice;
+    }
+
+    get given() {
+        return this.#given;
+    }
+}
+
+export default SnippetChoice;

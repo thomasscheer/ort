@@ -40,6 +40,7 @@ import org.ossreviewtoolkit.model.utils.DependencyGraphBuilder
 import org.ossreviewtoolkit.plugins.api.OrtPlugin
 import org.ossreviewtoolkit.plugins.api.PluginDescriptor
 import org.ossreviewtoolkit.plugins.packagemanagers.node.ModuleInfoResolver
+import org.ossreviewtoolkit.plugins.packagemanagers.node.NodeCommand
 import org.ossreviewtoolkit.plugins.packagemanagers.node.NodePackageManager
 import org.ossreviewtoolkit.plugins.packagemanagers.node.NodePackageManagerType
 import org.ossreviewtoolkit.plugins.packagemanagers.node.PackageJson
@@ -61,8 +62,19 @@ internal object YarnCommand : CommandLineTool {
 
     override fun getVersionRequirement(): RangeList = RangeListFactory.create("1.3.* - 1.22.*")
 
-    override fun run(workingDir: File?, vararg args: CharSequence): ProcessCapture =
-        super.run(*args, workingDir = workingDir, environment = mapOf("NODE_OPTIONS" to "--use-system-ca"))
+    override fun run(vararg args: CharSequence, workingDir: File?, environment: Map<String, String>): ProcessCapture =
+        super.run(
+            *args,
+            workingDir = workingDir,
+            environment = environment.toMutableMap().apply {
+                if (NodeCommand.hasUseSystemCaOption) {
+                    compute("NODE_OPTIONS") { _, options ->
+                        // Additional whitespaces do not matter when separating options.
+                        "${options.orEmpty()} --use-system-ca"
+                    }
+                }
+            }
+        )
 }
 
 /**
@@ -276,7 +288,7 @@ private fun List<YarnListNode>.undoDeduplication(): List<YarnListNode> {
         // Disregard entries which are not a dependency, but only installed in the module's dir for de-duplication.
         if (color == null) return null
 
-        val childrenAncestorIds = ancestorNames + setOfNotNull(name)
+        val childrenAncestorIds = ancestorNames + name
         val replacedNode = replacements[name] ?: this.copy(name = name)
 
         return replacedNode.copy(
@@ -300,7 +312,7 @@ private fun List<YarnListNode>.undoDeduplication(): List<YarnListNode> {
  * line option '--network-timeout'.
  */
 internal fun parseYarnInfo(stdout: String, stderr: String): PackageJson? =
-    extractDataNodes(stdout, "inspect").firstOrNull()?.let(::parsePackageJson).alsoIfNull {
+    extractDataNodes(stdout, "inspect").firstOrNull()?.let(::parsePackageJson).alsoIfNull { _ ->
         extractDataNodes(stderr, "warning").forEach {
             logger.info { "Warning running Yarn info: ${it.jsonPrimitive.content}" }
         }

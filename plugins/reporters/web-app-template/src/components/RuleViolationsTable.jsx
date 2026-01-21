@@ -56,7 +56,8 @@ const RuleViolationsTable = ({ webAppRuleViolations = [], showExcludesColumn = t
                         key: webAppRuleViolation.key,
                         message: webAppRuleViolation.message,
                         packageId: webAppRuleViolation.package
-                            ? webAppRuleViolation.package.id : '',
+                            ? webAppRuleViolation.package.id
+                            : '',
                         rule: webAppRuleViolation.rule,
                         severity: webAppRuleViolation.severity,
                         severityIndex: webAppRuleViolation.severityIndex,
@@ -170,7 +171,7 @@ const RuleViolationsTable = ({ webAppRuleViolations = [], showExcludesColumn = t
                 value: 2
             },
             {
-                text: (<Tag color="#b0c4de">Resolved</Tag>),
+                text: (<Tag color="#b0c4de" variant="solid">Resolved</Tag>),
                 value: 10
             }
         ],
@@ -415,7 +416,7 @@ const RuleViolationsTable = ({ webAppRuleViolations = [], showExcludesColumn = t
                     hideOnSinglePage: true,
                     onChange: handlePaginationChange,
                     pageSizeOptions: ['50', '100', '250', '500', '1000', '5000'],
-                    position: 'bottom',
+                    placement: 'bottom',
                     showQuickJumper: true,
                     showSizeChanger: true,
                     showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} violations`

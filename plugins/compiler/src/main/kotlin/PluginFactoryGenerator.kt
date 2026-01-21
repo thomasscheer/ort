@@ -137,55 +137,10 @@ class PluginFactoryGenerator(private val codeGenerator: CodeGenerator) {
             pluginOptions.forEach { option ->
                 add("    ${option.name} = ")
 
-                fun readOption(name: String) =
-                    when (option.type) {
-                        PluginOptionType.BOOLEAN -> add("config.options[%S]?.toBooleanStrict()", name)
-                        PluginOptionType.INTEGER -> add("config.options[%S]?.toInt()", name)
-                        PluginOptionType.LONG -> add("config.options[%S]?.toLong()", name)
-                        PluginOptionType.SECRET -> add("config.secrets[%S]?.let { %T(it) }", name, Secret::class)
-                        PluginOptionType.STRING -> add("config.options[%S]", name)
-                        PluginOptionType.STRING_LIST -> add(
-                            "config.options[%S]?.split(',')?.map { it.trim() }",
-                            name
-                        )
-                    }
-
-                // Add code to read the option from the options or secrets maps based on its type.
-                readOption(option.name)
-
-                // Add code to handle aliases.
-                option.aliases.forEach { alias ->
-                    add("\n        ?: ")
-                    readOption(alias)
-                }
-
-                // Add the default value if present.
-                option.defaultValue?.let { defaultValue ->
-                    when (option.type) {
-                        PluginOptionType.BOOLEAN -> add("\n        ?: %L", defaultValue.toBoolean())
-                        PluginOptionType.INTEGER -> add("\n        ?: %L", defaultValue.toInt())
-                        PluginOptionType.LONG -> add("\n        ?: %LL", defaultValue.toLong())
-                        PluginOptionType.SECRET -> add("\n        ?: %T(%S)", Secret::class, defaultValue)
-                        PluginOptionType.STRING -> add("\n        ?: %S", defaultValue)
-                        PluginOptionType.STRING_LIST -> {
-                            if (defaultValue.isEmpty()) {
-                                add("\n        ?: emptyList()")
-                            } else {
-                                add("\n        ?: listOf(")
-
-                                defaultValue.split(',').forEach { value ->
-                                    add("%S,", value.trim())
-                                }
-
-                                add(")")
-                            }
-                        }
-                    }
-                }
-
-                // Throw exception if the option is required but not set.
-                if (option.isRequired) {
-                    add(" ?: error(%S)", "Option ${option.name} is required but not set.")
+                if (option.isNullable) {
+                    add("parseNullable${option.type}Option(%S, config)", option.name)
+                } else {
+                    add("parse${option.type}Option(%S, config)", option.name)
                 }
 
                 add(",\n")

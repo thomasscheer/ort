@@ -31,9 +31,13 @@ import {
     Drawer,
     Input,
     message,
+    Space,
+    Tag,
     Tree
 } from 'antd';
 
+import PackageConfigurations from './PackageConfigurations';
+import PackageCurations from './PackageCurations';
 import PackageDetails from './PackageDetails';
 import PackageFindingsTable from './PackageFindingsTable';
 import PackageLicenses from './PackageLicenses';
@@ -175,7 +179,7 @@ const ResultsTree = ({ webAppOrtResult }) => {
                             <Drawer
                                 placement="right"
                                 closable={true}
-                                width="65%"
+                                size={Math.max(1000, window.innerWidth * 0.70)}
                                 open={drawerOpen}
                                 title={
                                     (() => {
@@ -263,6 +267,52 @@ const ResultsTree = ({ webAppOrtResult }) => {
                                                     <PackageFindingsTable
                                                         webAppPackage={selectedWebAppPackage}
                                                     />
+                                                )
+                                            });
+                                        }
+
+                                        if (selectedWebAppPackage.hasCurations()) {
+                                            collapseItems.push({
+                                                label: 'Package Curations',
+                                                key: 'package-curations',
+                                                children: (
+                                                    <PackageCurations
+                                                        webAppPackage={selectedWebAppPackage}
+                                                    />
+                                                )
+                                            });
+                                        }
+
+                                        if (selectedWebAppPackage.hasPackageConfigurations()) {
+                                            collapseItems.push({
+                                                label: 'Package Configurations',
+                                                key: 'package-configurations',
+                                                children: (
+                                                    <PackageConfigurations
+                                                        webAppPackage={selectedWebAppPackage}
+                                                    />
+                                                )
+                                            });
+                                        }
+
+                                        if (selectedWebAppPackage.hasLabels()) {
+                                            collapseItems.push({
+                                                label: 'Package Labels',
+                                                key: 'package-labels',
+                                                children: (
+                                                    <Space
+                                                        className="ort-package-labels"
+                                                        size="small"
+                                                    >
+                                                        {[...selectedWebAppPackage.labels].map(([key, value]) => (
+                                                            <Tag
+                                                                key={`package-label-${key}`}
+                                                                variant="outlined"
+                                                            >
+                                                                {`${key}=${value}`}
+                                                            </Tag>
+                                                        ))}
+                                                    </Space>
                                                 )
                                             });
                                         }

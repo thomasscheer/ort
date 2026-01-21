@@ -37,6 +37,7 @@ import org.ossreviewtoolkit.plugins.api.OrtPluginOption
 import org.ossreviewtoolkit.plugins.api.PluginDescriptor
 import org.ossreviewtoolkit.plugins.packagemanagers.node.ModuleInfoResolver
 import org.ossreviewtoolkit.plugins.packagemanagers.node.NPM_RUNTIME_CONFIGURATION_FILENAME
+import org.ossreviewtoolkit.plugins.packagemanagers.node.NodeCommand
 import org.ossreviewtoolkit.plugins.packagemanagers.node.NodePackageManager
 import org.ossreviewtoolkit.plugins.packagemanagers.node.NodePackageManagerType
 import org.ossreviewtoolkit.plugins.packagemanagers.node.Scope
@@ -57,8 +58,19 @@ internal object NpmCommand : CommandLineTool {
 
     override fun getVersionRequirement(): RangeList = RangeListFactory.create("6.* - 11.*")
 
-    override fun run(workingDir: File?, vararg args: CharSequence): ProcessCapture =
-        super.run(*args, workingDir = workingDir, environment = mapOf("NODE_OPTIONS" to "--use-system-ca"))
+    override fun run(vararg args: CharSequence, workingDir: File?, environment: Map<String, String>): ProcessCapture =
+        super.run(
+            *args,
+            workingDir = workingDir,
+            environment = environment.toMutableMap().apply {
+                if (NodeCommand.hasUseSystemCaOption) {
+                    compute("NODE_OPTIONS") { _, options ->
+                        // Additional whitespaces do not matter when separating options.
+                        "${options.orEmpty()} --use-system-ca"
+                    }
+                }
+            }
+        )
 }
 
 data class NpmConfig(
@@ -89,7 +101,6 @@ data class NpmConfig(
 )
 class Npm(override val descriptor: PluginDescriptor = NpmFactory.descriptor, private val config: NpmConfig) :
     NodePackageManager(NodePackageManagerType.NPM) {
-
     override val globsForDefinitionFiles = listOf(NodePackageManagerType.DEFINITION_FILE)
 
     private lateinit var fileStash: FileStash
