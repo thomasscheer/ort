@@ -151,7 +151,7 @@ class Pnpm(override val descriptor: PluginDescriptor = PnpmFactory.descriptor) :
             Scope.DEV_DEPENDENCIES -> "--dev"
         }
 
-        val json = PnpmCommand.run(workingDir, "list", "--json", "--recursive", "--lockfile-only", "--depth", "Infinity", scopeOption)
+        val json = PnpmCommand.run(workingDir, "list", "--json", "--recursive", "--lockfile-only", "--depth", "2", scopeOption)
             .requireSuccess().stdout
 
         return parsePnpmList(json).flatten().toList()
