@@ -34,7 +34,6 @@ plugins {
 
     // Apply precompiled plugins.
     id("ort-kotlin-conventions")
-    id("ort-publication-conventions")
 
     // Apply third-party plugins.
     id("org.graalvm.buildtools.native")
@@ -46,11 +45,6 @@ application {
         "--add-opens", "java.base/java.io=ALL-UNNAMED",
         "--add-opens", "java.base/sun.nio.ch=ALL-UNNAMED"
     )
-}
-
-mavenPublishing {
-    // Note that "dokkaGenerateHtml" is simply an alias for the below task name.
-    configure(KotlinJvm(JavadocJar.Dokka("dokkaGeneratePublicationHtml")))
 }
 
 graalvmNative {
@@ -83,7 +77,7 @@ graalvmNative {
                         listOf("^/META-INF/native-image/org.jline/.*"),
                     // The contained "reflect-config.json" does not match the code of the AWS flavor of the Apache HTTP
                     // client.
-                    "software.amazon.awssdk:apache-client:2.41.12" to
+                    "software.amazon.awssdk:apache-client:2.41.27" to
                         listOf("^/META-INF/native-image/software.amazon.awssdk/apache-client/.*")
                 )
             )
@@ -96,6 +90,7 @@ graalvmNative {
 }
 
 dependencies {
+    implementation(enforcedPlatform(libs.kotlin.bom))
     implementation(libs.logbackClassic)
 
     runtimeOnly(libs.log4j.api.slf4j)
