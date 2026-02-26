@@ -23,12 +23,8 @@ plugins {
 }
 
 repositories {
-    maven {
-        url = uri("https://nexus.intern.semvox.de/nexus/repository/gradle-plugin-portal/")
-    }
-
     // Allow to resolve external plugins from precompiled script plugins.
-    //gradlePluginPortal()
+    gradlePluginPortal()
 
     exclusiveContent {
         forRepository {
