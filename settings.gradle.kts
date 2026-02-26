@@ -73,6 +73,10 @@ fun includeSubprojects(directoryName: String, maxDepth: Int, accompanyingProject
 
 pluginManagement {
     repositories {
+        maven {
+            url = uri("https://nexus.intern.semvox.de/nexus/repository/gradle-plugin-portal/")
+        }
+
         mavenCentral()
         gradlePluginPortal()
     }
