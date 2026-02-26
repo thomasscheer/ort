@@ -78,7 +78,7 @@ pluginManagement {
         }
 
         mavenCentral()
-        gradlePluginPortal()
+        //gradlePluginPortal()
     }
 }
 

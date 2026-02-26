@@ -28,7 +28,7 @@ repositories {
     }
 
     // Allow to resolve external plugins from precompiled script plugins.
-    gradlePluginPortal()
+    //gradlePluginPortal()
 
     exclusiveContent {
         forRepository {
