@@ -27,6 +27,7 @@ import org.ossreviewtoolkit.analyzer.PackageManagerFactory
 import org.ossreviewtoolkit.model.ProjectAnalyzerResult
 import org.ossreviewtoolkit.model.config.AnalyzerConfiguration
 import org.ossreviewtoolkit.model.config.Excludes
+import org.ossreviewtoolkit.model.config.Includes
 import org.ossreviewtoolkit.model.utils.DependencyGraphBuilder
 import org.ossreviewtoolkit.plugins.api.OrtPlugin
 import org.ossreviewtoolkit.plugins.api.PluginDescriptor
@@ -107,12 +108,13 @@ class Pnpm(override val descriptor: PluginDescriptor = PnpmFactory.descriptor) :
         analysisRoot: File,
         definitionFile: File,
         excludes: Excludes,
+        includes: Includes,
         analyzerConfig: AnalyzerConfiguration,
         labels: Map<String, String>
     ): List<ProjectAnalyzerResult> {
         val workingDir = definitionFile.parentFile
         moduleInfoResolver.workingDir = workingDir
-        val scopes = Scope.entries.filterNot { scope -> scope.isExcluded(excludes) }
+        val scopes = Scope.entries.filterNot { scope -> scope.isExcluded(excludes, includes) }
 
         installDependencies(workingDir, scopes)
 
@@ -187,13 +189,10 @@ private fun ModuleInfo.getScopeDependencies(scope: Scope) =
  * possible, as a fallback the first list of [ModuleInfo] objects is returned.
  */
 private fun Sequence<List<ModuleInfo>>.findModulesFor(workingDir: File): List<ModuleInfo> {
-    val moduleInfoIterator = iterator()
-    val first = moduleInfoIterator.nextOrNull() ?: return emptyList()
+    val moduleInfosIterator = iterator()
+    val first = moduleInfosIterator.nextOrNull() ?: return emptyList()
 
-    fun List<ModuleInfo>.matchesWorkingDir() = any { File(it.path).absoluteFile == workingDir }
-
-    fun findMatchingModules(): List<ModuleInfo>? =
-        moduleInfoIterator.nextOrNull()?.takeIf { it.matchesWorkingDir() } ?: findMatchingModules()
-
-    return first.takeIf { it.matchesWorkingDir() } ?: findMatchingModules() ?: first
+    return moduleInfosIterator.asSequence().find { infos ->
+        infos.any { File(it.path).absoluteFile == workingDir }
+    } ?: first
 }

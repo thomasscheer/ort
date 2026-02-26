@@ -43,8 +43,6 @@ dependencies {
     implementation(jacksonLibs.jacksonDataformatYaml)
     implementation(jacksonLibs.jacksonModuleKotlin)
 
-    testImplementation(libs.kotest.assertions.json)
-    testImplementation(libs.kotest.framework.engine)
     testImplementation(projects.model)
 }
 

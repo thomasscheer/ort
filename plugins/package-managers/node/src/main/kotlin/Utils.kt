@@ -169,7 +169,7 @@ internal fun parsePackage(packageJson: PackageJson, moduleInfoResolver: ModuleIn
 
     var vcsFromPackage = parseVcsInfo(packageJson)
 
-    val id = Identifier("NPM", namespace, name, version)
+    val id = Identifier(NodePackageManagerType.NPM.packageType, namespace, name, version)
 
     val hasIncompleteData = description.isEmpty() || homepageUrl.isEmpty() || downloadUrl.isEmpty()
         || hash == Hash.NONE || vcsFromPackage == VcsInfo.EMPTY
@@ -234,8 +234,8 @@ internal fun splitNamespaceAndName(rawName: String): Pair<String, String> {
     return Pair(namespace, name)
 }
 
-internal val PackageJson.moduleId: String get() =
-    buildString {
+internal val PackageJson.moduleId: String
+    get() = buildString {
         append(name.orEmpty())
         if (!version.isNullOrBlank()) {
             append("@")

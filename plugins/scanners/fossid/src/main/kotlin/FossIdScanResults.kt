@@ -19,6 +19,8 @@
 
 package org.ossreviewtoolkit.plugins.scanners.fossid
 
+import com.github.packageurl.PackageURLBuilder
+
 import java.lang.invoke.MethodHandles
 
 import kotlin.collections.map
@@ -52,7 +54,6 @@ import org.ossreviewtoolkit.model.config.snippet.SnippetChoiceReason
 import org.ossreviewtoolkit.model.createAndLogIssue
 import org.ossreviewtoolkit.model.jsonMapper
 import org.ossreviewtoolkit.model.mapLicense
-import org.ossreviewtoolkit.model.utils.PurlType
 import org.ossreviewtoolkit.utils.common.collapseToRanges
 import org.ossreviewtoolkit.utils.common.collectMessages
 import org.ossreviewtoolkit.utils.common.prettyPrintRanges
@@ -61,6 +62,12 @@ import org.ossreviewtoolkit.utils.spdx.SpdxConstants
 import org.ossreviewtoolkit.utils.spdx.toSpdx
 
 private val logger = loggerOf(MethodHandles.lookup().lookupClass())
+
+/**
+ * The JSON key for ORT comments. This is more specific than [ORT_NAME] to avoid matching plain text comments that
+ * happen to contain the word "ort".
+ */
+private const val ORT_COMMENT_KEY = "\"$ORT_NAME\":"
 
 /**
  * A data class to hold FossID raw results.
@@ -148,7 +155,7 @@ internal fun <T : Summarizable> List<T>.mapSummary(
 
         if (summarizable is MarkedAsIdentifiedFile) {
             summarizable.comments.value?.values?.firstOrNull {
-                ORT_NAME in it.comment
+                ORT_COMMENT_KEY in it.comment
             }?.also {
                 runCatching {
                     fileComment = jsonMapper.readValue(it.comment, OrtComment::class.java)
@@ -306,8 +313,13 @@ private fun Set<Snippet>.mapSnippetFindingsForFile(
         }
 
         val snippetProvenance = ArtifactProvenance(RemoteArtifact(url, Hash.NONE))
-        val purl = snippet.purl
-            ?: "pkg:${urlToPackageType(url)}/${snippet.author}/${snippet.artifact}@${snippet.version}"
+        val purl = snippet.purl ?: PackageURLBuilder.aPackageURL()
+            .withType(urlToPackageType(url))
+            .withNamespace(snippet.author)
+            .withName(snippet.artifact)
+            .withVersion(snippet.version)
+            .build()
+            .canonicalize()
 
         val additionalSnippetData = mutableMapOf(
             FossId.SNIPPET_DATA_ID to snippet.id.toString(),
@@ -453,7 +465,7 @@ internal fun listUnmatchedSnippetChoices(
         }
 
         val comment = markedAsIdentifiedFile.comments.value?.values?.firstOrNull {
-            ORT_NAME in it.comment
+            ORT_COMMENT_KEY in it.comment
         }?.runCatching {
             jsonMapper.readValue(this.comment, OrtComment::class.java)
         }?.onFailure {
@@ -482,36 +494,36 @@ internal fun listUnmatchedSnippetChoices(
     }.map { it.getFileName() }
 
 /**
- * Return the [PurlType] as determined from the given [url], or [PurlType.GENERIC] if there is no match.
+ * Return the PURL type string as determined from the given [url], or "generic" if there is no match.
  */
-private fun urlToPackageType(url: String): PurlType =
+private fun urlToPackageType(url: String): String =
     when (val provider = PackageProvider.get(url)) {
-        PackageProvider.COCOAPODS -> PurlType.COCOAPODS
+        PackageProvider.COCOAPODS -> "cocoapods"
 
-        PackageProvider.CRATES_IO -> PurlType.CARGO
+        PackageProvider.CRATES_IO -> "cargo"
 
-        PackageProvider.DEBIAN -> PurlType.DEBIAN
+        PackageProvider.DEBIAN -> "deb"
 
-        PackageProvider.GITHUB -> PurlType.GITHUB
+        PackageProvider.GITHUB -> "github"
 
-        PackageProvider.GITLAB -> PurlType.GITLAB
+        PackageProvider.GITLAB -> "gitlab"
 
-        PackageProvider.GOLANG -> PurlType.GOLANG
+        PackageProvider.GOLANG -> "golang"
 
-        PackageProvider.MAVEN_CENTRAL, PackageProvider.MAVEN_GOOGLE -> PurlType.MAVEN
+        PackageProvider.MAVEN_CENTRAL, PackageProvider.MAVEN_GOOGLE -> "maven"
 
-        PackageProvider.NPM_JS -> PurlType.NPM
+        PackageProvider.NPM_JS -> "npm"
 
-        PackageProvider.NUGET -> PurlType.NUGET
+        PackageProvider.NUGET -> "nuget"
 
-        PackageProvider.PACKAGIST -> PurlType.COMPOSER
+        PackageProvider.PACKAGIST -> "composer"
 
-        PackageProvider.PYPI -> PurlType.PYPI
+        PackageProvider.PYPI -> "pypi"
 
-        PackageProvider.RUBYGEMS -> PurlType.GEM
+        PackageProvider.RUBYGEMS -> "gem"
 
         else -> {
-            PurlType.GENERIC.also {
+            "generic".also {
                 logger.warn {
                     "Cannot determine purl type for URL $url and provider '$provider'. Falling back to '$it'."
                 }

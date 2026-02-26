@@ -31,6 +31,7 @@ import org.ossreviewtoolkit.model.ProjectAnalyzerResult
 import org.ossreviewtoolkit.model.Severity
 import org.ossreviewtoolkit.model.config.AnalyzerConfiguration
 import org.ossreviewtoolkit.model.config.Excludes
+import org.ossreviewtoolkit.model.config.Includes
 import org.ossreviewtoolkit.model.utils.DependencyGraphBuilder
 import org.ossreviewtoolkit.plugins.api.OrtPlugin
 import org.ossreviewtoolkit.plugins.api.OrtPluginOption
@@ -148,6 +149,7 @@ class Npm(override val descriptor: PluginDescriptor = NpmFactory.descriptor, pri
         analysisRoot: File,
         definitionFile: File,
         excludes: Excludes,
+        includes: Includes,
         analyzerConfig: AnalyzerConfiguration,
         labels: Map<String, String>
     ): List<ProjectAnalyzerResult> {
@@ -169,7 +171,7 @@ class Npm(override val descriptor: PluginDescriptor = NpmFactory.descriptor, pri
 
         val project = parseProject(definitionFile, analysisRoot)
         val projectModuleInfo = listModules(workingDir, issues).undoDeduplication().filterInstalled()
-        val scopes = Scope.entries.filterNotTo(mutableSetOf()) { scope -> scope.isExcluded(excludes) }
+        val scopes = Scope.entries.filterNotTo(mutableSetOf()) { scope -> scope.isExcluded(excludes, includes) }
 
         // Warm-up the cache to speed-up processing.
         requestAllPackageDetails(projectModuleInfo, scopes)
@@ -280,8 +282,13 @@ internal fun List<String>.groupLines(vararg markers: String): List<String> {
         "path ",
         "syscall "
     )
-    val singleLinePrefixes =
-        setOf("deprecated ", "invalid: ", "missing: ", "skipping integrity check for git dependency ")
+    val singleLinePrefixes = setOf(
+        "deprecated ",
+        "gitignore-fallback ",
+        "invalid: ",
+        "missing: ",
+        "skipping integrity check for git dependency "
+    )
     val minCommonPrefixLength = 5
 
     val issueLines = mapNotNull { line ->
@@ -335,6 +342,7 @@ internal fun List<String>.groupLines(vararg markers: String): List<String> {
 
     // If no lines but the last end with a dot, assume the message to be a single sentence.
     val isMultiLineSentence = nonFooterLines.size > 1
+        && nonFooterLines.none { line -> singleLinePrefixes.any { line.startsWith(it) } }
         && nonFooterLines.last().endsWith('.')
         && nonFooterLines.subList(0, nonFooterLines.size - 1).none { it.endsWith('.') }
 

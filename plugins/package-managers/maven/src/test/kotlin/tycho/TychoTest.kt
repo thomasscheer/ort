@@ -64,6 +64,7 @@ import org.ossreviewtoolkit.model.VcsInfo
 import org.ossreviewtoolkit.model.VcsType
 import org.ossreviewtoolkit.model.config.AnalyzerConfiguration
 import org.ossreviewtoolkit.model.config.Excludes
+import org.ossreviewtoolkit.model.config.Includes
 import org.ossreviewtoolkit.model.utils.DependencyGraphBuilder
 import org.ossreviewtoolkit.plugins.packagemanagers.maven.utils.PackageResolverFun
 import org.ossreviewtoolkit.plugins.packagemanagers.maven.utils.identifier
@@ -132,6 +133,7 @@ class TychoTest : WordSpec({
                 tempdir(),
                 definitionFile,
                 Excludes.EMPTY,
+                Includes.EMPTY,
                 AnalyzerConfiguration(),
                 emptyMap()
             )
@@ -164,6 +166,7 @@ class TychoTest : WordSpec({
                     tempdir(),
                     definitionFile,
                     Excludes.EMPTY,
+                    Includes.EMPTY,
                     AnalyzerConfiguration(),
                     emptyMap()
                 )
@@ -185,6 +188,7 @@ class TychoTest : WordSpec({
                 tempdir(),
                 definitionFile,
                 Excludes.EMPTY,
+                Includes.EMPTY,
                 AnalyzerConfiguration(),
                 emptyMap()
             )
@@ -212,6 +216,7 @@ class TychoTest : WordSpec({
                 tempdir(),
                 definitionFile,
                 Excludes.EMPTY,
+                Includes.EMPTY,
                 AnalyzerConfiguration(),
                 emptyMap()
             )
@@ -250,6 +255,7 @@ class TychoTest : WordSpec({
                 tempdir(),
                 definitionFile,
                 Excludes.EMPTY,
+                Includes.EMPTY,
                 AnalyzerConfiguration(),
                 emptyMap()
             )
@@ -284,6 +290,7 @@ class TychoTest : WordSpec({
                 tempdir(),
                 definitionFile,
                 Excludes.EMPTY,
+                Includes.EMPTY,
                 AnalyzerConfiguration(),
                 emptyMap()
             )
@@ -307,7 +314,7 @@ class TychoTest : WordSpec({
                 pkg
             }
 
-            val resolver = tychoPackageResolverFun(delegate, mockk(), mockk(), mockk())
+            val resolver = tychoPackageResolverFun(delegate, mockk(), mockk(), mockk(), mockk(relaxed = true))
 
             resolver(dependency) shouldBe pkg
         }
@@ -397,12 +404,72 @@ class TychoTest : WordSpec({
             }
 
             val targetHandler = mockk<TargetHandler> {
-                every { mapToMavenDependency(originalArtifact) } returns mappedArtifact
+                every { mapToMavenDependency(originalArtifact) } returns listOf(mappedArtifact)
             }
 
-            val resolver = tychoPackageResolverFun(delegate, mockk(), mockk(), targetHandler)
+            val resolver = tychoPackageResolverFun(delegate, mockk(), mockk(), targetHandler, mockk(relaxed = true))
 
             resolver(dependency) shouldBe pkg
+        }
+
+        "test all candidates for a wrapped artifact" {
+            val originalArtifact = mockk<Artifact>()
+            val mappedArtifact1 = mockk<Artifact>()
+            val mappedArtifact2 = mockk<Artifact>()
+            val mappedArtifact3 = mockk<Artifact>()
+            val mappedArtifact4 = mockk<Artifact>()
+            val dependency = DefaultDependencyNode(originalArtifact)
+
+            var delegateCount = 0
+            val pkg = mockk<Package>()
+            val delegate: PackageResolverFun = { node ->
+                delegateCount++
+                if (node.artifact != mappedArtifact3) {
+                    throw IOException("Test exception: Unresolvable dependency.")
+                }
+
+                pkg
+            }
+
+            val targetHandler = mockk<TargetHandler> {
+                every { mapToMavenDependency(originalArtifact) } returns listOf(
+                    mappedArtifact1,
+                    mappedArtifact2,
+                    mappedArtifact3,
+                    mappedArtifact4
+                )
+            }
+
+            val resolver = tychoPackageResolverFun(delegate, mockk(), mockk(), targetHandler, mockk(relaxed = true))
+
+            resolver(dependency) shouldBe pkg
+            delegateCount shouldBe 4
+        }
+
+        "throw if none of the candidates for a wrapped artifact can be resolved" {
+            val originalArtifact = mockk<Artifact>(relaxed = true)
+            val mappedArtifact1 = mockk<Artifact>()
+            val mappedArtifact2 = mockk<Artifact>()
+            val mappedArtifact3 = mockk<Artifact>()
+            val dependency = DefaultDependencyNode(originalArtifact)
+
+            val delegate: PackageResolverFun = {
+                throw IOException("Test exception: Unresolvable dependency.")
+            }
+
+            val targetHandler = mockk<TargetHandler> {
+                every { mapToMavenDependency(originalArtifact) } returns listOf(
+                    mappedArtifact1,
+                    mappedArtifact2,
+                    mappedArtifact3
+                )
+            }
+
+            val resolver = tychoPackageResolverFun(delegate, mockk(), mockk(), targetHandler, mockk(relaxed = true))
+
+            shouldThrow<IllegalStateException> {
+                resolver(dependency)
+            }
         }
     }
 
@@ -649,11 +716,11 @@ private fun createResolverFunWithRepositoryHelper(block: LocalRepositoryHelper.(
     val helper = mockk<LocalRepositoryHelper>(block = block)
     val resolver = createResolverMock()
     val targetHandler = mockk<TargetHandler> {
-        every { mapToMavenDependency(any()) } returns null
+        every { mapToMavenDependency(any()) } returns emptyList()
     }
 
     val delegateResolverFun: PackageResolverFun = { throw resolveException }
-    return tychoPackageResolverFun(delegateResolverFun, helper, resolver, targetHandler)
+    return tychoPackageResolverFun(delegateResolverFun, helper, resolver, targetHandler, mockk(relaxed = true))
 }
 
 /**

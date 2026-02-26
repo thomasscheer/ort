@@ -23,6 +23,7 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 import java.util.jar.Manifest
 
+import org.apache.logging.log4j.kotlin.KotlinLogger
 import org.apache.logging.log4j.kotlin.logger
 import org.apache.maven.AbstractMavenLifecycleParticipant
 import org.apache.maven.cli.MavenCli
@@ -49,8 +50,10 @@ import org.ossreviewtoolkit.model.ProjectAnalyzerResult
 import org.ossreviewtoolkit.model.RemoteArtifact
 import org.ossreviewtoolkit.model.config.AnalyzerConfiguration
 import org.ossreviewtoolkit.model.config.Excludes
+import org.ossreviewtoolkit.model.config.Includes
 import org.ossreviewtoolkit.model.createAndLogIssue
 import org.ossreviewtoolkit.model.utils.DependencyGraphBuilder
+import org.ossreviewtoolkit.model.utils.isScopeIncluded
 import org.ossreviewtoolkit.plugins.api.OrtPlugin
 import org.ossreviewtoolkit.plugins.api.PluginDescriptor
 import org.ossreviewtoolkit.plugins.packagemanagers.maven.utils.LocalProjectWorkspaceReader
@@ -110,6 +113,7 @@ class Tycho(override val descriptor: PluginDescriptor = TychoFactory.descriptor)
         analysisRoot: File,
         definitionFile: File,
         excludes: Excludes,
+        includes: Includes,
         analyzerConfig: AnalyzerConfiguration,
         labels: Map<String, String>
     ): List<ProjectAnalyzerResult> {
@@ -134,7 +138,7 @@ class Tycho(override val descriptor: PluginDescriptor = TychoFactory.descriptor)
             buildLog.inputStream().use { stream ->
                 parseDependencyTree(stream, collector.mavenProjects.values, resolver::isFeature).map { projectNode ->
                     val project = collector.mavenProjects.getValue(projectNode.artifact.identifier())
-                    processProjectDependencies(graphBuilder, project, projectNode.children, excludes)
+                    processProjectDependencies(graphBuilder, project, projectNode.children, includes, excludes)
                     project
                 }.toList()
             }
@@ -196,7 +200,8 @@ class Tycho(override val descriptor: PluginDescriptor = TychoFactory.descriptor)
             mavenSupport.defaultPackageResolverFun(),
             repositoryHelper,
             resolver,
-            targetHandler
+            targetHandler,
+            logger
         )
         val dependencyHandler = MavenDependencyHandler(descriptor.displayName, projectType, mavenProjects, resolverFun)
         return DependencyGraphBuilder(dependencyHandler)
@@ -251,11 +256,12 @@ class Tycho(override val descriptor: PluginDescriptor = TychoFactory.descriptor)
         graphBuilder: DependencyGraphBuilder<DependencyNode>,
         project: MavenProject,
         dependencies: Collection<DependencyNode>,
+        includes: Includes,
         excludes: Excludes
     ) {
         val projectId = project.identifier(projectType)
 
-        dependencies.filterNot { excludes.isScopeExcluded(it.dependency.scope) }.forEach { node ->
+        dependencies.filter { isScopeIncluded(it.dependency.scope, excludes, includes) }.forEach { node ->
             graphBuilder.addDependency(DependencyGraph.qualifyScope(projectId, node.dependency.scope), node)
         }
     }
@@ -368,21 +374,52 @@ internal fun tychoPackageResolverFun(
     delegate: PackageResolverFun,
     repositoryHelper: LocalRepositoryHelper,
     resolver: P2ArtifactResolver,
-    targetHandler: TargetHandler
+    targetHandler: TargetHandler,
+    logger: KotlinLogger
 ): PackageResolverFun =
     { dependency ->
         runCatching {
             delegate(dependency)
         }.recoverCatching { exception ->
-            targetHandler.mapToMavenDependency(dependency.artifact)?.let { artifact ->
+            targetHandler.mapToMavenDependency(dependency.artifact)
+                .takeIf { it.isNotEmpty() }?.let { artifacts ->
+                    resolveMavenArtifacts(dependency, delegate, artifacts, logger)
+                } ?: createPackageFromLocalArtifact(dependency.artifact, repositoryHelper, resolver)
+                ?: throw exception
+        }.getOrThrow()
+    }
+
+/**
+ * Resolve a [dependency] via the standard Maven resolution process accessible through the given [resolver] function.
+ * Try the given [candidates] as potential Maven artifacts corresponding to the given dependency and return the first
+ * successfully resolved [Package]. Throw an exception if none of the candidates could be resolved.
+ */
+private fun resolveMavenArtifacts(
+    dependency: DependencyNode,
+    resolver: PackageResolverFun,
+    candidates: List<Artifact>,
+    logger: KotlinLogger
+): Package =
+    checkNotNull(
+        candidates.firstNotNullOfOrNull { artifact ->
+            runCatching {
+                logger.debug {
+                    "Trying to resolve Maven artifact candidate " +
+                        "'${artifact.groupId}:${artifact.artifactId}:${artifact.version}'."
+                }
+
                 val mappedDependency = DefaultDependencyNode(artifact).apply {
                     repositories = dependency.repositories
                 }
 
-                delegate(mappedDependency)
-            } ?: createPackageFromLocalArtifact(dependency.artifact, repositoryHelper, resolver)
-                ?: throw exception
-        }.getOrThrow()
+                resolver(mappedDependency)
+            }.onFailure { exception ->
+                logger.debug(exception) { "Failed to resolve Maven artifact candidate." }
+            }.getOrNull()
+        }
+    ) {
+        "Failed to resolve ${candidates.size} candidates for dependency " +
+            "'${dependency.artifact.identifier()}'."
     }
 
 /**

@@ -68,7 +68,6 @@ RUN --mount=type=cache,target=/var/cache,sharing=locked \
     tzdata \
     uuid-dev \
     unzip \
-    wget \
     xz-utils \
     && rm -rf /var/lib/apt/lists/* \
     && git lfs install
@@ -180,9 +179,8 @@ RUN pip install --no-cache-dir -U \
     poetry-plugin-export=="$PYTHON_POETRY_PLUGIN_EXPORT_VERSION" \
     python-inspector=="$PYTHON_INSPECTOR_VERSION" \
     setuptools=="$PYTHON_SETUPTOOLS_VERSION"
-RUN mkdir /tmp/conan2 && cd /tmp/conan2 \
-    && wget https://github.com/conan-io/conan/releases/download/$CONAN2_VERSION/conan-$CONAN2_VERSION-linux-x86_64.tgz \
-    && tar -xvf conan-$CONAN2_VERSION-linux-x86_64.tgz\
+RUN mkdir /tmp/conan2 \
+    && curl -L https://github.com/conan-io/conan/releases/download/$CONAN2_VERSION/conan-$CONAN2_VERSION-linux-$(arch).tgz | tar -xz -C /tmp/conan2 \
     # Rename the Conan 2 executable to "conan2" to be able to call both Conan version from the package manager.
     && mkdir $PYENV_ROOT/conan2 && mv /tmp/conan2/bin $PYENV_ROOT/conan2/ \
     && mv $PYENV_ROOT/conan2/bin/conan $PYENV_ROOT/conan2/bin/conan2
@@ -463,6 +461,67 @@ COPY --from=bazelbuild /opt/bazel /opt/bazel
 COPY --from=bazelbuild /opt/go/bin/buildozer /opt/go/bin/buildozer
 
 #------------------------------------------------------------------------
+# Cosign for signature verification
+FROM ghcr.io/sigstore/cosign/cosign:v$COSIGN_VERSION AS cosign
+
+#------------------------------------------------------------------------
+# Elixir (Mix SBoM)
+FROM base AS mix_sbom_build
+
+COPY --from=cosign /ko-app/cosign /usr/local/bin/cosign
+
+ARG MIX_SBOM_VERSION
+
+ENV MIX_SBOM_HOME=/opt/mix_sbom
+
+# Download and verify mix_sbom binary signature
+RUN mkdir -p $MIX_SBOM_HOME/bin \
+    && ARCH=$(arch | sed s/aarch64/ARM64/ | sed s/x86_64/X64/) \
+    && curl -sSL "https://github.com/erlef/mix_sbom/releases/download/v${MIX_SBOM_VERSION}/mix_sbom_Linux_${ARCH}" \
+       -o $MIX_SBOM_HOME/bin/mix_sbom \
+    && curl -sSL "https://github.com/erlef/mix_sbom/releases/download/v${MIX_SBOM_VERSION}/mix_sbom_Linux_${ARCH}.sigstore" \
+       -o /tmp/mix_sbom.sigstore \
+    && cosign verify-blob \
+       --bundle /tmp/mix_sbom.sigstore \
+       --certificate-identity-regexp "^https://github.com/erlef/mix_sbom/.*@refs/tags/v${MIX_SBOM_VERSION}$" \
+       --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+       $MIX_SBOM_HOME/bin/mix_sbom \
+    && chmod a+x $MIX_SBOM_HOME/bin/mix_sbom \
+    && rm /tmp/mix_sbom.sigstore \
+    && $MIX_SBOM_HOME/bin/mix_sbom --version
+
+FROM scratch AS elixir
+COPY --from=mix_sbom_build /opt/mix_sbom /opt/mix_sbom
+
+#------------------------------------------------------------------------
+# Erlang (Rebar3 SBoM wrapped in Bombom)
+FROM base AS rebar3_sbom_build
+
+COPY --from=cosign /ko-app/cosign /usr/local/bin/cosign
+
+ARG BOMBOM_VERSION
+
+ENV BOMBOM_HOME=/opt/bombom
+
+# Download and verify bombom binary signature
+RUN mkdir -p $BOMBOM_HOME/bin \
+    && ARCH=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) \
+    && curl -sSL "https://github.com/erlef/bombom/releases/download/${BOMBOM_VERSION}/bombom-linux-${ARCH}.bin" \
+       -o $BOMBOM_HOME/bin/bombom \
+    && curl -sSL "https://github.com/erlef/bombom/releases/download/${BOMBOM_VERSION}/bombom-linux-${ARCH}.bin.sigstore" \
+       -o /tmp/bombom.sigstore \
+    && cosign verify-blob \
+       --bundle /tmp/bombom.sigstore \
+       --certificate-identity-regexp "^https://github.com/erlef/bombom/.*@refs/tags/${BOMBOM_VERSION}$" \
+       --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+       $BOMBOM_HOME/bin/bombom \
+    && chmod a+x $BOMBOM_HOME/bin/bombom \
+    && rm /tmp/bombom.sigstore
+
+FROM scratch AS erlang
+COPY --from=rebar3_sbom_build /opt/bombom /opt/bombom
+
+#------------------------------------------------------------------------
 # ORT
 FROM base AS ortbuild
 
@@ -494,30 +553,27 @@ COPY --from=ortbuild /opt/ort /opt/ort
 # Gleam
 FROM base AS gleambuild
 
-ARG COSIGN_VERSION
+COPY --from=cosign /ko-app/cosign /usr/local/bin/cosign
+
 ARG GLEAM_VERSION
 
 ENV GLEAM_HOME=/opt/gleam
 
-# Download cosign binary, verify Gleam binary signature, then clean up
-RUN COSIGN_ARCH=$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) \
-    && curl -L "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-${COSIGN_ARCH}" \
-       -o /tmp/cosign \
-    && chmod +x /tmp/cosign \
-    && mkdir -p $GLEAM_HOME/bin \
+# Download and verify Gleam binary signature
+RUN mkdir -p $GLEAM_HOME/bin \
     && ARCH=$(arch) \
-    && curl -L "https://github.com/gleam-lang/gleam/releases/download/v${GLEAM_VERSION}/gleam-v${GLEAM_VERSION}-${ARCH}-unknown-linux-musl.tar.gz" \
+    && curl -sSL "https://github.com/gleam-lang/gleam/releases/download/v${GLEAM_VERSION}/gleam-v${GLEAM_VERSION}-${ARCH}-unknown-linux-musl.tar.gz" \
        -o /tmp/gleam.tar.gz \
-    && curl -L "https://github.com/gleam-lang/gleam/releases/download/v${GLEAM_VERSION}/gleam-v${GLEAM_VERSION}-${ARCH}-unknown-linux-musl.tar.gz.sigstore" \
+    && curl -sSL "https://github.com/gleam-lang/gleam/releases/download/v${GLEAM_VERSION}/gleam-v${GLEAM_VERSION}-${ARCH}-unknown-linux-musl.tar.gz.sigstore" \
        -o /tmp/gleam.sigstore \
-    && /tmp/cosign verify-blob \
+    && cosign verify-blob \
        --bundle /tmp/gleam.sigstore \
        --certificate-identity-regexp "^https://github.com/gleam-lang/gleam/.*@refs/tags/v${GLEAM_VERSION}$" \
        --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
        /tmp/gleam.tar.gz \
     && tar -xzf /tmp/gleam.tar.gz -C $GLEAM_HOME/bin \
     && chmod a+x $GLEAM_HOME/bin/gleam \
-    && rm /tmp/gleam.tar.gz /tmp/gleam.sigstore /tmp/cosign \
+    && rm /tmp/gleam.tar.gz /tmp/gleam.sigstore \
     && $GLEAM_HOME/bin/gleam --version
 
 FROM scratch AS gleam
@@ -681,6 +737,16 @@ ENV PATH=$PATH:/opt/askalono/bin
 ENV GLEAM_HOME=/opt/gleam
 ENV PATH=$PATH:$GLEAM_HOME/bin
 COPY --from=gleam --chown=$USER:$USER $GLEAM_HOME $GLEAM_HOME
+
+# Elixir (Mix SBoM)
+ENV MIX_SBOM_HOME=/opt/mix_sbom
+ENV PATH=$PATH:$MIX_SBOM_HOME/bin
+COPY --from=elixir --chown=$USER:$USER $MIX_SBOM_HOME $MIX_SBOM_HOME
+
+# Erlang (Rebar3 SBoM wrapped in Bombom)
+ENV BOMBOM_HOME=/opt/bombom
+ENV PATH=$PATH:$BOMBOM_HOME/bin
+COPY --from=erlang --chown=$USER:$USER $BOMBOM_HOME $BOMBOM_HOME
 
 #------------------------------------------------------------------------
 # Runtime container with minimal selection of supported package managers pre-installed.

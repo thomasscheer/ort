@@ -81,9 +81,23 @@ internal class GradleDependencyHandler(
         }
 
         val hasNoArtifacts = dependency.pomFile == null
+        val isPomArtifact = dependency.extension == "pom"
+
+        val isPlatformDependency = dependency.variants.keys.any {
+            it.startsWith("platform-") || it.startsWith("enforced-platform-")
+        }
+
+        val isKotlinMultiPlatform = dependency.variants.values.any {
+            "org.jetbrains.kotlin.platform.type" in it.keys
+        }
 
         val binaryArtifact = when {
             hasNoArtifacts -> RemoteArtifact.EMPTY
+
+            isKotlinMultiPlatform -> with(dependency) {
+                // TODO: Support more than just "jvm" targets for KMP projects.
+                createRemoteArtifact(pomFile, classifier, "jar")
+            }
 
             else -> with(dependency) {
                 createRemoteArtifact(pomFile, classifier, extension.takeUnless { it == "bundle" })
@@ -92,6 +106,7 @@ internal class GradleDependencyHandler(
 
         val sourceArtifact = when {
             hasNoArtifacts -> RemoteArtifact.EMPTY
+            isPomArtifact && !isKotlinMultiPlatform -> binaryArtifact
             else -> createRemoteArtifact(dependency.pomFile, "sources", "jar")
         }
 
@@ -116,11 +131,12 @@ internal class GradleDependencyHandler(
             sourceArtifact = sourceArtifact,
             vcs = vcs,
             vcsProcessed = vcsProcessed,
-            isMetadataOnly = hasNoArtifacts
+            isMetadataOnly = hasNoArtifacts || (isPomArtifact && !isKotlinMultiPlatform) || isPlatformDependency
         )
     }
 
     override fun areDependenciesEqual(dependenciesA: List<OrtDependency>, dependenciesB: List<OrtDependency>): Boolean {
+        if (dependenciesA === dependenciesB) return true
         if (dependenciesA.isEmpty() && dependenciesB.isEmpty()) return true
 
         val depsA = dependenciesA.distinct()
