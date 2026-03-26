@@ -33,14 +33,14 @@ import io.kotest.matchers.collections.beEmpty
 import io.kotest.matchers.collections.containExactly
 import io.kotest.matchers.collections.containExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldBeSingleton
-import io.kotest.matchers.maps.shouldNotBeEmpty
+import io.kotest.matchers.maps.beEmpty as beEmptyMap
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNot
 
 import java.net.URI
 
-import org.ossreviewtoolkit.advisor.normalizeVulnerabilityData
 import org.ossreviewtoolkit.model.AdvisorCapability
 import org.ossreviewtoolkit.model.AdvisorDetails
 import org.ossreviewtoolkit.model.Identifier
@@ -50,6 +50,7 @@ import org.ossreviewtoolkit.model.Severity
 import org.ossreviewtoolkit.model.utils.toPurl
 import org.ossreviewtoolkit.model.vulnerabilities.Vulnerability
 import org.ossreviewtoolkit.model.vulnerabilities.VulnerabilityReference
+import org.ossreviewtoolkit.plugins.advisors.api.normalizeVulnerabilityData
 import org.ossreviewtoolkit.utils.common.enumSetOf
 import org.ossreviewtoolkit.utils.test.readResourceValue
 
@@ -79,7 +80,7 @@ class VulnerableCodeTest : WordSpec({
 
             val result = vulnerableCode.retrievePackageFindings(packagesToAdvise).mapKeys { it.key.id }
 
-            result.shouldNotBeEmpty()
+            result shouldNot beEmptyMap()
             result.keys should containExactlyInAnyOrder(idLang, idStruts)
 
             val langResult = result.getValue(idLang)
@@ -375,7 +376,7 @@ private fun TestConfiguration.inputPackagesFromAnalyzerResult(): Set<Package> =
  * [identifiers].
  */
 private fun inputPackagesFromIdentifiers(vararg identifiers: Identifier): Set<Package> =
-    identifiers.map { Package.EMPTY.copy(id = it, purl = it.toPurl()) }.toSet()
+    identifiers.mapTo(mutableSetOf()) { Package.EMPTY.copy(id = it, purl = it.toPurl()) }
 
 /**
  * Generate the JSON body of the request to query information about the packages identified by the given [purls].

@@ -50,7 +50,6 @@ import org.ossreviewtoolkit.clients.fossid.PolymorphicData
 import org.ossreviewtoolkit.clients.fossid.checkDownloadStatus
 import org.ossreviewtoolkit.clients.fossid.createIgnoreRule
 import org.ossreviewtoolkit.clients.fossid.createProject
-import org.ossreviewtoolkit.clients.fossid.createScan
 import org.ossreviewtoolkit.clients.fossid.deleteScan
 import org.ossreviewtoolkit.clients.fossid.downloadFromGit
 import org.ossreviewtoolkit.clients.fossid.listScansForProject
@@ -423,11 +422,11 @@ class FossIdTest : WordSpec({
 
             val summary = fossId.scan(createPackage(pkgId, vcsInfo)).summary
 
-            val expectedPendingFile = (1..5).map(::createPendingFile).toSet()
+            val expectedPendingFiles = (1..5).map(::createPendingFile)
             val expectedSnippetFindings = (1..5).map(::createSnippetFindings)
 
-            summary.snippetFindings shouldHaveSize expectedPendingFile.size
-            summary.snippetFindings.map { it.sourceLocation.path }.toSet() shouldBe expectedPendingFile
+            summary.snippetFindings shouldHaveSize expectedPendingFiles.size
+            summary.snippetFindings.map { it.sourceLocation.path } shouldBe expectedPendingFiles
             summary.snippetFindings shouldBe expectedSnippetFindings
         }
 

@@ -21,8 +21,6 @@ package org.ossreviewtoolkit.model.utils
 
 import java.util.LinkedList
 
-import org.apache.logging.log4j.kotlin.logger
-
 import org.ossreviewtoolkit.model.DependencyGraph
 import org.ossreviewtoolkit.model.DependencyGraphEdge
 import org.ossreviewtoolkit.model.DependencyGraphNode
@@ -184,23 +182,8 @@ class DependencyGraphBuilder<D>(
             sortedSetOf(),
             constructSortedScopeMappings(scopeMapping, indexMapping),
             nodes,
-            edges.removeCycles()
+            edges
         )
-    }
-
-    private fun Set<DependencyGraphEdge>.removeCycles(): Set<DependencyGraphEdge> {
-        val edges = toMutableSet()
-        val edgesToKeep = breakCycles(edges)
-
-        if (logger.delegate.isInfoEnabled) {
-            val edgesToRemove = edges - edgesToKeep
-
-            edgesToRemove.forEach {
-                logger.info { "Removing edge '${it.from} -> ${it.to}' to break a cycle." }
-            }
-        }
-
-        return edgesToKeep
     }
 
     private fun checkReferences() {
@@ -376,18 +359,20 @@ class DependencyGraphBuilder<D>(
         transitive: Boolean,
         processed: Set<D>
     ): DependencyReference? {
-        val transitiveDependencies = dependencyHandler.dependenciesFor(dependency).mapNotNullTo(mutableSetOf()) {
-            addDependencyToGraph(scopeName, it, transitive = true, processed)
-        }
+        val nextProcessed = processed + dependency
+        val transitiveDependencies = dependencyHandler.dependenciesFor(dependency)
+            .mapNotNullTo(mutableSetOf()) { dep ->
+                dep.takeUnless { it in nextProcessed }?.let {
+                    addDependencyToGraph(scopeName, dep, transitive = true, nextProcessed + dep)
+                }
+            }
 
         val fragmentMapping = referenceMappings[index.fragment]
         if (index.root in fragmentMapping) {
             // If this point is reached, the package has already been inserted when processing its dependencies.
             // This means that there is a cyclic dependency. To handle this case correctly, the insert operation has
-            // to be started anew unless the dependency has already been encountered.
-            if (dependency in processed) return null
-
-            return addDependencyToGraph(scopeName, dependency, transitive, processed + dependency)
+            // to be started anew.
+            return addDependencyToGraph(scopeName, dependency, transitive, nextProcessed)
         }
 
         val ref = DependencyReference(
@@ -487,49 +472,6 @@ private data class NodeKey(
 
 private val DependencyReference.key: NodeKey
     get() = NodeKey(pkg, fragment)
-
-private enum class NodeColor { WHITE, GRAY, BLACK }
-
-/**
- * A depth-first-search (DFS)-based implementation which breaks all cycles in O(V + E).
- * Finding a minimal solution is NP-complete.
- */
-internal fun breakCycles(edges: Collection<DependencyGraphEdge>): Set<DependencyGraphEdge> {
-    val outgoingEdgesForNodes = edges.groupByTo(mutableMapOf(), { it.from }, { it.to })
-    val color = outgoingEdgesForNodes.keys.associateWithTo(mutableMapOf()) { NodeColor.WHITE }
-
-    fun visit(u: Int) {
-        color[u] = NodeColor.GRAY
-
-        val nodesClosingCircle = mutableSetOf<Int>()
-
-        outgoingEdgesForNodes[u].orEmpty().forEach { v ->
-            if (color[v] == NodeColor.WHITE) {
-                visit(v)
-            } else if (color[v] == NodeColor.GRAY) {
-                nodesClosingCircle += v
-            }
-        }
-
-        outgoingEdgesForNodes[u]?.removeAll(nodesClosingCircle)
-
-        color[u] = NodeColor.BLACK
-    }
-
-    val queue = LinkedList(outgoingEdgesForNodes.keys)
-
-    while (queue.isNotEmpty()) {
-        val v = queue.removeFirst()
-
-        if (color.getValue(v) != NodeColor.WHITE) continue
-
-        visit(v)
-    }
-
-    return outgoingEdgesForNodes.flatMapTo(mutableSetOf()) { (fromNode, toNodes) ->
-        toNodes.map { toNode -> DependencyGraphEdge(fromNode, toNode) }
-    }
-}
 
 /**
  * Sort the list of [identifiers][ids] for the known dependencies and generate a mapping, so that all index-based

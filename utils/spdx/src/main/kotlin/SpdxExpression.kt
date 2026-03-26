@@ -289,7 +289,7 @@ class SpdxCompoundExpression(
 
             expression.children.forEach { addChildren(it) }
 
-            return children.sortedBy { it.toString() }
+            return children.sortedBy { it.toString().lowercase() }
         }
 
         return checkNotNull(getSortedChildrenWithSameOperator(this).toExpression(operator))
@@ -524,13 +524,8 @@ class SpdxLicenseWithExceptionExpression(
 
     override fun equals(other: Any?) =
         when (other) {
-            is SpdxLicenseWithExceptionExpression -> license == other.license && exception == other.exception
-
-            is SpdxExpression -> {
-                val decomposed = other.decompose()
-                decomposed.singleOrNull()?.let {
-                    it is SpdxLicenseWithExceptionExpression && it.license == license && it.exception == exception
-                } == true
+            is SpdxLicenseWithExceptionExpression -> {
+                license == other.license && exception.equals(other.exception, ignoreCase = true)
             }
 
             else -> false
@@ -589,13 +584,8 @@ class SpdxLicenseIdExpression(
 
     override fun equals(other: Any?) =
         when (other) {
-            is SpdxLicenseIdExpression -> id == other.id && orLaterVersion == other.orLaterVersion
-
-            is SpdxExpression -> {
-                val decomposed = other.decompose()
-                decomposed.singleOrNull()?.let {
-                    it is SpdxLicenseIdExpression && it.id == id && it.orLaterVersion == orLaterVersion
-                } == true
+            is SpdxLicenseIdExpression -> {
+                id.equals(other.id, ignoreCase = true) && orLaterVersion == other.orLaterVersion
             }
 
             else -> false
@@ -638,13 +628,7 @@ data class SpdxLicenseReferenceExpression(
 
     override fun equals(other: Any?) =
         when (other) {
-            is SpdxLicenseReferenceExpression -> id == other.id
-
-            is SpdxExpression -> {
-                val decomposed = other.decompose()
-                decomposed.singleOrNull()?.let { it is SpdxLicenseReferenceExpression && it.id == id } == true
-            }
-
+            is SpdxLicenseReferenceExpression -> id.equals(other.id, ignoreCase = true)
             else -> false
         }
 

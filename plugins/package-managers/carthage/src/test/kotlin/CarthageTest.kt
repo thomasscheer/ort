@@ -20,8 +20,6 @@
 package org.ossreviewtoolkit.plugins.packagemanagers.carthage
 
 import io.kotest.core.spec.style.WordSpec
-import io.kotest.core.test.TestCase
-import io.kotest.engine.test.TestResult
 import io.kotest.matchers.collections.beEmpty
 import io.kotest.matchers.collections.shouldBeSingleton
 import io.kotest.matchers.should
@@ -30,7 +28,6 @@ import io.kotest.matchers.string.shouldContain
 
 import io.mockk.every
 import io.mockk.mockkStatic
-import io.mockk.unmockkAll
 
 import java.io.File
 import java.net.URI
@@ -38,66 +35,54 @@ import java.net.URI
 import org.ossreviewtoolkit.analyzer.resolveSingleProject
 import org.ossreviewtoolkit.model.VcsType
 
-class CarthageTest : WordSpec() {
-    private val carthage = CarthageFactory.create()
+class CarthageTest : WordSpec({
+    val carthage = CarthageFactory.create()
 
-    override suspend fun afterTest(testCase: TestCase, result: TestResult) {
-        unmockkAll()
-    }
+    "resolveDependencies" should {
+        "parse a github dependency" {
+            val cartfile = File("src/test/assets/Cartfile-github.resolved")
 
-    init {
-        "resolveDependencies" should {
-            "parse a github dependency" {
-                val cartfile = File("src/test/assets/Cartfile-github.resolved")
+            val result = carthage.resolveSingleProject(cartfile)
 
-                val result = carthage.resolveSingleProject(cartfile)
-
-                with(result.packages) {
-                    size shouldBe 1
-                    single().apply {
-                        id.type shouldBe PACKAGE_TYPE
-                        vcs.url shouldBe "https://github.com/Alamofire/AlamofireImage.git"
-                        vcs.revision shouldBe "3.2.0"
-                    }
-                }
+            result.packages.shouldBeSingleton {
+                it.id.type shouldBe PACKAGE_TYPE
+                it.vcs.url shouldBe "https://github.com/Alamofire/AlamofireImage.git"
+                it.vcs.revision shouldBe "3.2.0"
             }
+        }
 
-            "parse a generic git dependency" {
-                val cartfile = File("src/test/assets/Cartfile-generic-git.resolved")
+        "parse a generic git dependency" {
+            val cartfile = File("src/test/assets/Cartfile-generic-git.resolved")
 
-                val result = carthage.resolveSingleProject(cartfile)
+            val result = carthage.resolveSingleProject(cartfile)
 
-                with(result.packages) {
-                    size shouldBe 1
-                    single().apply {
-                        id.type shouldBe PACKAGE_TYPE
-                        vcs.type shouldBe VcsType.GIT
-                        vcs.url shouldBe "https://host.tld/path/to/project.git"
-                        vcs.revision shouldBe "1.0.0"
-                    }
-                }
+            result.packages.shouldBeSingleton {
+                it.id.type shouldBe PACKAGE_TYPE
+                it.vcs.type shouldBe VcsType.GIT
+                it.vcs.url shouldBe "https://host.tld/path/to/project.git"
+                it.vcs.revision shouldBe "1.0.0"
             }
+        }
 
-            "parse a binary dependency url" {
-                mockkStatic("kotlin.io.TextStreamsKt")
+        "parse a binary dependency url" {
+            mockkStatic("kotlin.io.TextStreamsKt") {
                 every { URI("https://host.tld/path/to/binary/spec.json").toURL().readBytes() } returns
                     File("src/test/assets/Carthage-binary-specification.json").readText().toByteArray()
 
                 val cartfile = File("src/test/assets/Cartfile-binary.resolved")
 
                 val result = carthage.resolveSingleProject(cartfile)
-                with(result.packages) {
-                    size shouldBe 1
-                    single().apply {
-                        id.type shouldBe PACKAGE_TYPE
-                        id.name shouldBe "spec"
-                        binaryArtifact.url shouldBe "https://host.tld/path/to/binary/dependency.zip"
-                    }
+
+                result.packages.shouldBeSingleton {
+                    it.id.type shouldBe PACKAGE_TYPE
+                    it.id.name shouldBe "spec"
+                    it.binaryArtifact.url shouldBe "https://host.tld/path/to/binary/dependency.zip"
                 }
             }
+        }
 
-            "parse mixed dependencies" {
-                mockkStatic("kotlin.io.TextStreamsKt")
+        "parse mixed dependencies" {
+            mockkStatic("kotlin.io.TextStreamsKt") {
                 every { URI("https://host.tld/path/to/binary/spec.json").toURL().readBytes() } returns
                     File("src/test/assets/Carthage-binary-specification.json").readText().toByteArray()
 
@@ -116,17 +101,17 @@ class CarthageTest : WordSpec() {
                     count { "binary/dependency.zip" in it.binaryArtifact.url } shouldBe 1
                 }
             }
+        }
 
-            "throw an error for a wrongly defined dependency" {
-                val cartfile = File("src/test/assets/Cartfile-faulty.resolved")
+        "throw an error for a wrongly defined dependency" {
+            val cartfile = File("src/test/assets/Cartfile-faulty.resolved")
 
-                val result = carthage.resolveSingleProject(cartfile)
+            val result = carthage.resolveSingleProject(cartfile)
 
-                result.packages should beEmpty()
-                result.issues.shouldBeSingleton {
-                    it.message shouldContain "IllegalArgumentException"
-                }
+            result.packages should beEmpty()
+            result.issues.shouldBeSingleton {
+                it.message shouldContain "IllegalArgumentException"
             }
         }
     }
-}
+})

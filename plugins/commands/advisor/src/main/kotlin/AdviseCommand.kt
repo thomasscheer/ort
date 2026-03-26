@@ -40,11 +40,11 @@ import kotlin.time.toKotlinDuration
 
 import kotlinx.coroutines.runBlocking
 
-import org.ossreviewtoolkit.advisor.AdviceProviderFactory
 import org.ossreviewtoolkit.advisor.Advisor
 import org.ossreviewtoolkit.model.FileFormat
 import org.ossreviewtoolkit.model.utils.DefaultResolutionProvider
 import org.ossreviewtoolkit.model.utils.mergeLabels
+import org.ossreviewtoolkit.plugins.advisors.api.AdviceProviderFactory
 import org.ossreviewtoolkit.plugins.api.OrtPlugin
 import org.ossreviewtoolkit.plugins.api.PluginDescriptor
 import org.ossreviewtoolkit.plugins.commands.api.OrtCommand
@@ -165,7 +165,11 @@ class AdviseCommand(descriptor: PluginDescriptor = AdviseCommandFactory.descript
         }
 
         val resolutionProvider = DefaultResolutionProvider.create(ortResultOutput, resolutionsFile)
-        val issues = advisorRun.getIssues().flatMap { it.value }
+        val issues = buildList {
+            advisorRun.getIssues().values.forEach { addAll(it) }
+            addAll(advisorRun.providerIssues)
+        }
+
         SeverityStatsPrinter(terminal, resolutionProvider).stats(issues)
             .print().conclude(ortConfig.severeIssueThreshold, ORT_FAILURE_STATUS_CODE)
     }

@@ -78,17 +78,14 @@ class FossIdNamingProvider(
         scanCodeNamingPattern: String,
         scanCodeVariables: Map<String, String>
     ): String {
-        val noBranchScanCode =
-            replaceNamingConventionVariables(
-                scanCodeNamingPattern.replace("#branch", ""),
-                scanCodeVariables
-            )
+        val noBranchScanCode = replaceNamingConventionVariables(
+            scanCodeNamingPattern.replace("#branch", ""),
+            scanCodeVariables
+        )
 
         require(noBranchScanCode.length < MAX_SCAN_CODE_LEN) {
-            throw IllegalArgumentException(
-                "FossID scan code '$noBranchScanCode' exceeds the limit of $MAX_SCAN_CODE_LEN characters. " +
-                    "Please consider a shorter naming scan pattern."
-            )
+            "FossID scan code '$noBranchScanCode' exceeds the limit of $MAX_SCAN_CODE_LEN characters. " +
+                "Please consider a shorter naming scan pattern."
         }
 
         val maxBranchNameLength = MAX_SCAN_CODE_LEN - noBranchScanCode.length

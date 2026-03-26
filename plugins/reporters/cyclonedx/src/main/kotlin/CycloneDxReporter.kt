@@ -36,6 +36,7 @@ import org.cyclonedx.model.license.Expression
 import org.cyclonedx.model.metadata.ToolInformation
 
 import org.ossreviewtoolkit.model.LicenseSource
+import org.ossreviewtoolkit.model.OrtResult
 import org.ossreviewtoolkit.model.Project
 import org.ossreviewtoolkit.model.utils.toPurl
 import org.ossreviewtoolkit.plugins.api.OrtPlugin
@@ -105,6 +106,20 @@ data class CycloneDxReporterConfig(
     val singleBom: Boolean,
 
     /**
+     * Allows overriding the component name in the metadata of the generated report in [singleBom] mode. Per default,
+     * the name is derived from a single top-level project (if any) or falls back to the VCS URL. Using this property,
+     * an arbitrary name can be set.
+     */
+    @OrtPluginOption(defaultValue = "")
+    val singleBomComponentName: String,
+
+    /**
+     * Allows specifying the component type in the metadata of the generated report in [singleBom] mode.
+     */
+    @OrtPluginOption(defaultValue = "APPLICATION")
+    val singleBomComponentType: Component.Type,
+
+    /**
      * A comma-separated list of (case-insensitive) output formats to export to. Supported are XML and JSON.
      */
     @OrtPluginOption(
@@ -130,6 +145,50 @@ class CycloneDxReporter(
 ) : Reporter {
     companion object {
         const val REPORT_BASE_FILENAME = "bom.cyclonedx"
+
+        /**
+         * Return a [Component] object to be placed in the metadata of the generated BOM if `singleBom` is enabled.
+         * The function tries to find meaningful values for the component's properties based on the current list of
+         * [projects] and the given [result] object. This works best for a multi-module project where the single
+         * subprojects share common properties. The following properties are set:
+         * - If all projects have the same namespace, this is used for the `group` property.
+         * - If all projects have the same version, this is used for the `version` property; otherwise, the version is
+         *   set to the VCS revision.
+         * - To derive the component `name`, the function tries to find a single top-level project and obtains the name
+         *   from this project. If this is not possible, it uses the URL from the VCS information.
+         *
+         * If these default values are not suitable, it is possible to override some of them via the reporter [config].
+         */
+        internal fun getSingleBomMetadataComponent(
+            projects: Collection<Project>,
+            result: OrtResult,
+            config: CycloneDxReporterConfig
+        ): Component =
+            Component().apply {
+                type = config.singleBomComponentType
+
+                val namespaces = projects.mapTo(mutableSetOf()) { it.id.namespace }
+                val versions = projects.mapTo(mutableSetOf()) { it.id.version }
+
+                with(result.repository.vcsProcessed) {
+                    bomRef = "$url@$revision"
+
+                    group = namespaces.singleOrNull()
+                    name = config.singleBomComponentName.takeUnless { it.isEmpty() }
+                        ?: findTopLevelProject(projects)?.id?.name ?: url
+                    version = versions.singleOrNull() ?: revision
+                }
+            }
+
+        /**
+         * Try to obtain a single top-level project in [projects]. The top-level project is identified based on the
+         * number of components in the definition file path. If there are multiple projects with a minimum number of
+         * path components, there is no single top-level project, and the function returns *null*.
+         */
+        private fun findTopLevelProject(projects: Collection<Project>): Project? =
+            projects.groupBy { project ->
+                project.definitionFilePath.count { it == '/' }
+            }.minByOrNull { it.key }?.value?.singleOrNull()
     }
 
     override fun generateReport(input: ReporterInput, outputDir: File): List<Result<File>> {
@@ -164,17 +223,7 @@ class CycloneDxReporter(
                 serialNumber = "urn:uuid:${UUID.randomUUID()}"
 
                 this.metadata = metadata.apply {
-                    component = Component().apply {
-                        // There is no component type for repositories.
-                        type = Component.Type.FILE
-
-                        with(input.ortResult.repository.vcsProcessed) {
-                            bomRef = "$url@$revision"
-
-                            name = url
-                            version = revision
-                        }
-                    }
+                    component = getSingleBomMetadataComponent(projects, input.ortResult, config)
                 }
 
                 components = mutableListOf()

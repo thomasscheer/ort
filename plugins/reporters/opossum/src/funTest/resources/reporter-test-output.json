@@ -141,7 +141,6 @@
         "documentConfidence" : 80
       },
       "attributionConfidence" : 80,
-      "packageType" : "null",
       "preSelected" : false,
       "followUp" : "FOLLOW_UP",
       "excludeFromNotice" : true,
@@ -153,7 +152,6 @@
         "documentConfidence" : 80
       },
       "attributionConfidence" : 80,
-      "packageType" : "null",
       "preSelected" : false,
       "followUp" : "FOLLOW_UP",
       "excludeFromNotice" : true,
@@ -165,7 +163,6 @@
         "documentConfidence" : 80
       },
       "attributionConfidence" : 80,
-      "packageType" : "null",
       "preSelected" : false,
       "followUp" : "FOLLOW_UP",
       "excludeFromNotice" : true,
@@ -177,7 +174,6 @@
         "documentConfidence" : 80
       },
       "attributionConfidence" : 80,
-      "packageType" : "null",
       "preSelected" : false,
       "followUp" : "FOLLOW_UP",
       "excludeFromNotice" : true,
@@ -189,7 +185,6 @@
         "documentConfidence" : 80
       },
       "attributionConfidence" : 80,
-      "packageType" : "null",
       "copyright" : "Copyright (c) example authors.",
       "licenseName" : "LicenseRef-test-Apache-2.0-single-line AND LicenseRef-test-Apache-2.0-multi-line",
       "preSelected" : false,
@@ -201,7 +196,6 @@
         "documentConfidence" : 80
       },
       "attributionConfidence" : 80,
-      "packageType" : "null",
       "copyright" : "",
       "licenseName" : "(GPL-2.0-only WITH Classpath-exception-2.0 AND BSD-3-Clause) OR MIT",
       "preSelected" : false,
@@ -213,7 +207,6 @@
         "documentConfidence" : 80
       },
       "attributionConfidence" : 80,
-      "packageType" : "null",
       "preSelected" : false,
       "followUp" : "FOLLOW_UP",
       "excludeFromNotice" : true,
@@ -225,7 +218,6 @@
         "documentConfidence" : 80
       },
       "attributionConfidence" : 80,
-      "packageType" : "null",
       "preSelected" : false,
       "followUp" : "FOLLOW_UP",
       "excludeFromNotice" : true,
@@ -237,7 +229,6 @@
         "documentConfidence" : 80
       },
       "attributionConfidence" : 80,
-      "packageType" : "null",
       "preSelected" : false,
       "followUp" : "FOLLOW_UP",
       "excludeFromNotice" : true,
@@ -249,7 +240,6 @@
         "documentConfidence" : 80
       },
       "attributionConfidence" : 80,
-      "packageType" : "null",
       "preSelected" : false,
       "followUp" : "FOLLOW_UP",
       "excludeFromNotice" : true,
@@ -261,7 +251,6 @@
         "documentConfidence" : 80
       },
       "attributionConfidence" : 80,
-      "packageType" : "null",
       "preSelected" : false,
       "followUp" : "FOLLOW_UP",
       "excludeFromNotice" : true,
@@ -273,7 +262,6 @@
         "documentConfidence" : 80
       },
       "attributionConfidence" : 80,
-      "packageType" : "null",
       "preSelected" : false,
       "followUp" : "FOLLOW_UP",
       "excludeFromNotice" : true,
@@ -285,7 +273,6 @@
         "documentConfidence" : 80
       },
       "attributionConfidence" : 80,
-      "packageType" : "null",
       "preSelected" : false,
       "followUp" : "FOLLOW_UP",
       "excludeFromNotice" : true,
@@ -297,7 +284,6 @@
         "documentConfidence" : 80
       },
       "attributionConfidence" : 80,
-      "packageType" : "null",
       "copyright" : "Copyright (c) example authors.",
       "licenseName" : "MIT",
       "preSelected" : false,
@@ -309,7 +295,6 @@
         "documentConfidence" : 80
       },
       "attributionConfidence" : 80,
-      "packageType" : "null",
       "copyright" : "",
       "licenseName" : "Apache-2.0",
       "preSelected" : false,
@@ -321,7 +306,6 @@
         "documentConfidence" : 80
       },
       "attributionConfidence" : 80,
-      "packageType" : "null",
       "copyright" : "",
       "licenseName" : "MIT",
       "preSelected" : false,
@@ -333,7 +317,6 @@
         "documentConfidence" : 80
       },
       "attributionConfidence" : 80,
-      "packageType" : "null",
       "copyright" : "Copyright (c) example authors.",
       "licenseName" : "Apache-2.0",
       "preSelected" : false,
@@ -345,7 +328,6 @@
         "documentConfidence" : 80
       },
       "attributionConfidence" : 80,
-      "packageType" : "null",
       "preSelected" : false,
       "followUp" : "FOLLOW_UP",
       "excludeFromNotice" : true,

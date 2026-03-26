@@ -32,7 +32,7 @@ repositories {
 
     exclusiveContent {
         forRepository {
-            maven("https://repo.eclipse.org/content/groups/releases")
+            maven("https://repo.eclipse.org/content/repositories/releases")
         }
 
         filter {
@@ -83,6 +83,14 @@ configurations.all {
 tasks.withType<Jar>().configureEach {
     manifest {
         attributes["Implementation-Version"] = version
+    }
+}
+
+normalization {
+    runtimeClasspath {
+        metaInf {
+            ignoreAttribute("Implementation-Version")
+        }
     }
 }
 

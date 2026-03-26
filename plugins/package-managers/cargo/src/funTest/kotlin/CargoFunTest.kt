@@ -30,9 +30,18 @@ import org.ossreviewtoolkit.utils.test.matchExpectedResult
 
 @Tags("RequiresExternalTool")
 class CargoFunTest : StringSpec({
-    "Projects dependencies are detected correctly" {
+    "Project dependencies are detected correctly" {
         val definitionFile = getAssetFile("projects/synthetic/cargo/Cargo.toml")
         val expectedResultFile = getAssetFile("projects/synthetic/cargo-expected-output.yml")
+
+        val result = CargoFactory.create().resolveSingleProject(definitionFile)
+
+        result.toYaml() should matchExpectedResult(expectedResultFile, definitionFile)
+    }
+
+    "A Git source is correctly mapped to VCS information" {
+        val definitionFile = getAssetFile("projects/synthetic/cargo-git-source/Cargo.toml")
+        val expectedResultFile = getAssetFile("projects/synthetic/cargo-git-source-expected-output.yml")
 
         val result = CargoFactory.create().resolveSingleProject(definitionFile)
 

@@ -48,11 +48,11 @@ class DirectoryStashFunTest : StringSpec() {
     override suspend fun beforeTest(testCase: TestCase) {
         sandboxDir = tempdir()
 
-        a = sandboxDir / "a"
+        a = sandboxDir / "a-dir"
         aSubdir = a / "a-subdir"
         aNestedFile = aSubdir / "a-file"
 
-        b = sandboxDir / "b"
+        b = sandboxDir / "b-dir"
         bSubdir = b / "b-subdir"
         bNestedFile = bSubdir / "b-file"
 
@@ -178,6 +178,18 @@ class DirectoryStashFunTest : StringSpec() {
 
         "root directories and files can be stashed" {
             stashDirectories(a, aNestedFile, b, bNestedFile).use {}
+
+            sandboxDirShouldBeInOriginalState()
+        }
+
+        "copying works and modified files get restored" {
+            stashDirectories(aNestedFile, bNestedFile, sandboxDir / "non-existing-file", copy = true).use {
+                aNestedFile shouldBe aFile()
+                bNestedFile shouldBe aFile()
+
+                aNestedFile.writeText("Hello")
+                bNestedFile.writeText("World")
+            }
 
             sandboxDirShouldBeInOriginalState()
         }
