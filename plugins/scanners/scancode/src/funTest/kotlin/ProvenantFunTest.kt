@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The ORT Project Copyright Holders <https://github.com/oss-review-toolkit/ort/blob/main/NOTICE>
+ * Copyright (C) 2026 The ORT Project Copyright Holders <https://github.com/oss-review-toolkit/ort/blob/main/NOTICE>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,15 +19,21 @@
 
 package org.ossreviewtoolkit.plugins.scanners.scancode
 
+import io.kotest.core.annotation.Condition
+import io.kotest.core.annotation.EnabledIf
 import io.kotest.core.annotation.Tags
+import io.kotest.core.spec.Spec
+
+import kotlin.reflect.KClass
 
 import org.ossreviewtoolkit.model.LicenseFinding
 import org.ossreviewtoolkit.model.TextLocation
 import org.ossreviewtoolkit.scanner.AbstractPathScannerWrapperFunTest
 
+@EnabledIf(ProvenantInPath::class)
 @Tags("RequiresExternalTool")
-class ScanCodeScannerFunTest : AbstractPathScannerWrapperFunTest() {
-    override val scanner = ScanCodeFactory.create()
+class ProvenantFunTest : AbstractPathScannerWrapperFunTest() {
+    override val scanner = ProvenantFactory.create()
 
     override val expectedFileLicenses = listOf(
         LicenseFinding("Apache-2.0", TextLocation("LICENSE", 1, 201), 100.0f)
@@ -38,4 +44,8 @@ class ScanCodeScannerFunTest : AbstractPathScannerWrapperFunTest() {
         LicenseFinding("Apache-2.0", TextLocation("LICENCE", 1, 201), 100.0f),
         LicenseFinding("Apache-2.0", TextLocation("LICENSE", 1, 201), 100.0f)
     )
+}
+
+internal class ProvenantInPath : Condition {
+    override fun evaluate(kclass: KClass<out Spec>): Boolean = ProvenantCommand.isInPath()
 }

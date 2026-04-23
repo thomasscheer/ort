@@ -25,15 +25,10 @@ plugins {
 dependencies {
     api(projects.downloader)
     api(projects.model)
-    api(projects.utils.commonUtils) {
-        because("This is a CommandLineTool.")
-    }
 
-    api(libs.semver4j) {
-        because("This is a CommandLineTool.")
-    }
+    implementation(projects.utils.commonUtils)
 
-    implementation(projects.utils.ortUtils)
+    implementation(libs.semver4j)
 
     ksp(projects.downloader)
 }

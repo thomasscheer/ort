@@ -39,13 +39,11 @@ import io.kotest.matchers.shouldBe
 
 import java.net.URI
 
-import org.ossreviewtoolkit.model.AdvisorCapability
 import org.ossreviewtoolkit.model.AdvisorDetails
 import org.ossreviewtoolkit.model.Severity
 import org.ossreviewtoolkit.model.vulnerabilities.Vulnerability
 import org.ossreviewtoolkit.model.vulnerabilities.VulnerabilityReference
 import org.ossreviewtoolkit.plugins.api.Secret
-import org.ossreviewtoolkit.utils.common.enumSetOf
 import org.ossreviewtoolkit.utils.test.identifierToPackage
 
 class OssIndexTest : WordSpec({
@@ -88,7 +86,7 @@ class OssIndexTest : WordSpec({
                 vulnerabilities should containExactly(
                     Vulnerability(
                         id = "CVE-2020-15250",
-                        summary = "[CVE-2020-15250] In JUnit4 from version 4.7 and before 4.13.1,...",
+                        summary = "In JUnit4 from version 4.7 and before 4.13.1,...",
                         description = "In JUnit4 from version 4.7 and before 4.13.1, the test...",
                         references = listOf(
                             VulnerabilityReference(
@@ -142,7 +140,7 @@ class OssIndexTest : WordSpec({
         "be correct" {
             val ossIndex = createOssIndex()
 
-            ossIndex.details shouldBe AdvisorDetails(ADVISOR_NAME, enumSetOf(AdvisorCapability.VULNERABILITIES))
+            ossIndex.details shouldBe AdvisorDetails(ADVISOR_NAME)
         }
     }
 })

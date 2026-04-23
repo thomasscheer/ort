@@ -23,7 +23,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.WordSpec
 import io.kotest.engine.spec.tempdir
-import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.file.aDirectory
 import io.kotest.matchers.file.aFile
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -81,7 +81,7 @@ class DownloaderFunTest : WordSpec({
             val provenance = Downloader(DownloaderConfiguration()).download(pkg, outputDir)
             val tslibDir = outputDir / "tslib-1.10.0"
 
-            provenance.shouldBeTypeOf<ArtifactProvenance>().apply {
+            with(provenance.shouldBeTypeOf<ArtifactProvenance>()) {
                 sourceArtifact.url shouldBe pkg.sourceArtifact.url
                 sourceArtifact.hash shouldBe pkg.sourceArtifact.hash
             }
@@ -218,12 +218,13 @@ class DownloaderFunTest : WordSpec({
                 Downloader(DownloaderConfiguration()).download(pkg, outputDir)
             }
 
-            exception.suppressed shouldHaveSize 2
-            exception.suppressed[0]!!.message shouldBe "No VCS URL provided for 'Maven:junit:junit:4.12'. " +
-                "Please define the \"connection\" tag within the \"scm\" tag in the POM file, " +
-                "see: https://maven.apache.org/pom.html#SCM"
-            exception.suppressed[1]!!.message shouldBe "Source artifact does not match expected " +
-                "Hash(value=0123456789abcdef0123456789abcdef01234567, algorithm=SHA-1)."
+            exception.suppressed.map { it.message }.shouldContainExactly(
+                "No VCS URL provided for 'Maven:junit:junit:4.12'. " +
+                    "Please define the \"connection\" tag within the \"scm\" tag in the POM file, " +
+                    "see: https://maven.apache.org/pom.html#SCM",
+                "Source artifact does not match expected " +
+                    "Hash(value=0123456789abcdef0123456789abcdef01234567, algorithm=SHA-1)."
+            )
         }
 
         "should be tried as a fallback when the download from VCS fails" {
@@ -256,7 +257,7 @@ class DownloaderFunTest : WordSpec({
             val provenance = Downloader(downloaderConfiguration).download(pkg, outputDir)
             val licenseFile = outputDir / "LICENSE-junit.txt"
 
-            provenance.shouldBeTypeOf<ArtifactProvenance>().apply {
+            with(provenance.shouldBeTypeOf<ArtifactProvenance>()) {
                 sourceArtifact.url shouldBe pkg.sourceArtifact.url
                 sourceArtifact.hash shouldBe pkg.sourceArtifact.hash
             }
@@ -305,7 +306,7 @@ class DownloaderFunTest : WordSpec({
             val workingTree = VersionControlSystem.forDirectory(outputDir)
             val babelCliDir = outputDir / "packages" / "babel-cli"
 
-            provenance.shouldBeTypeOf<RepositoryProvenance>().apply {
+            with(provenance.shouldBeTypeOf<RepositoryProvenance>()) {
                 vcsInfo.type shouldBe pkg.vcsProcessed.type
                 vcsInfo.url shouldBe pkg.vcsProcessed.url
                 vcsInfo.revision shouldBe "master"
@@ -348,7 +349,7 @@ class DownloaderFunTest : WordSpec({
 
             outputDir.walk().onEnter { it.name !in VCS_DIRECTORIES }.count() shouldBe 302
 
-            provenance.shouldBeTypeOf<RepositoryProvenance>().apply {
+            with(provenance.shouldBeTypeOf<RepositoryProvenance>()) {
                 vcsInfo.type shouldBe VcsType.SUBVERSION
                 vcsInfo.url shouldBe vcsFromCuration.url
                 vcsInfo.revision shouldBe ""
@@ -387,7 +388,7 @@ class DownloaderFunTest : WordSpec({
             val provenance = Downloader(downloaderConfiguration).download(pkg, outputDir)
             val licenseFile = outputDir / "LICENSE-junit.txt"
 
-            provenance.shouldBeTypeOf<RepositoryProvenance>().apply {
+            with(provenance.shouldBeTypeOf<RepositoryProvenance>()) {
                 vcsInfo.url shouldBe pkg.vcs.url
                 vcsInfo.revision shouldBe pkg.vcs.revision
             }
