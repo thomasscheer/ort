@@ -1,4 +1,4 @@
-# Copyright (C) 2022 The ORT Project Copyright Holders <https://github.com/oss-review-toolkit/ort/blob/main/NOTICE>
+# Copyright (C) 2026 The ORT Project Copyright Holders <https://github.com/oss-review-toolkit/ort/blob/main/NOTICE>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,9 +15,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # License-Filename: LICENSE
 
-version: "1.0"
-profile:
-  name: qodana.recommended
-include:
-  - name: CheckDependencyLicenses
-linter: jetbrains/qodana-jvm-community:2025.3
+POST https://api.guide.sonatype.com/api/v3/authorized/component-report
+Content-Type: application/json
+Authorization: Bearer {{$env.SONATYPE_PAT}}
+
+{
+  "coordinates": [
+    "pkg:maven/org.hamcrest/hamcrest-core@1.3",
+    "pkg:maven/junit/junit@4.12"
+  ]
+}

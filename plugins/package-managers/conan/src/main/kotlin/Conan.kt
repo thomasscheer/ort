@@ -319,16 +319,6 @@ class Conan(
     }
 
     /**
-     * Return the [VcsInfo] contained in [pkgInfo].
-     */
-    internal fun parseVcsInfo(pkgInfo: PackageInfo): VcsInfo {
-        val revision = pkgInfo.revision.orEmpty()
-        val url = pkgInfo.url.orEmpty()
-        val vcsInfo = VcsHost.parseUrl(url)
-        return if (revision == "0") vcsInfo else vcsInfo.copy(revision = revision)
-    }
-
-    /**
      * Return the source artifact contained in [conanData], or [RemoteArtifact.EMPTY] if no source artifact is
      * available.
      */
@@ -374,16 +364,40 @@ class Conan(
             }
         }
 
-        return ConanData(url, sha256, hasPatches)
+        val scm = root.get<YamlMap>("scm")
+        val scmUrl = scm?.get<YamlScalar>("url")?.content
+        val scmCommit = scm?.get<YamlScalar>("commit")?.content
+
+        return ConanData(url, sha256, scmUrl, scmCommit, hasPatches)
     }
 }
 
 internal data class ConanData(
     val url: String?,
     val sha256: String?,
+    val scmUrl: String?,
+    val scmCommit: String?,
     val hasPatches: Boolean
 ) {
     companion object {
-        val EMPTY = ConanData(url = null, sha256 = null, hasPatches = false)
+        val EMPTY = ConanData(url = null, sha256 = null, scmUrl = null, scmCommit = null, hasPatches = false)
     }
+
+    /**
+     * Return the [VcsInfo] for this [ConanData], or null if no VCS information is available.
+     */
+    fun toVcsInfo(): VcsInfo {
+        val url = scmUrl ?: return VcsInfo.EMPTY
+        val vcsInfo = VcsHost.parseUrl(url)
+        val revision = scmCommit ?: return vcsInfo
+        return vcsInfo.copy(revision = revision)
+    }
+}
+
+/**
+ * Return the [VcsInfo] contained in [PackageInfo].
+ */
+internal fun PackageInfo.toVcsInfo(): VcsInfo {
+    val vcsInfo = VcsHost.parseUrl(url.orEmpty())
+    return if (revision == "0") vcsInfo else vcsInfo.copy(revision = revision.orEmpty())
 }
