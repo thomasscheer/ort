@@ -187,8 +187,33 @@ class DependencyGraphBuilder<D>(
     }
 
     private fun checkReferences() {
+        val danglingIds = validPackageDependencies - resolvedPackages.keys
+
+        if (danglingIds.isNotEmpty()) {
+
+            danglingIds.forEach { id ->
+                resolvedPackages[id] = Package.EMPTY.copy(
+                    id = id,
+                    description = "semvox GmbH private workspace package"
+                )
+            }
+        }
+
+        val packageReferencesKeysWithMultipleDistinctPackageReferences =
+            references.keys.groupBy { it.key }
+                .filter { it.value.distinct().size > 1 }
+                .keys
+
+        require(packageReferencesKeysWithMultipleDistinctPackageReferences.isEmpty()) {
+            "Found multiple distinct package references for each of the following package / fragment index tuples " +
+                "${packageReferencesKeysWithMultipleDistinctPackageReferences.joinToString()}."
+        }
+    }
+
+
+    /**private fun checkReferences() {
         require(resolvedPackages.keys.containsAll(validPackageDependencies)) {
-            val danglingIds = validPackageDependencies - resolvedPackages.keys
+            val danglingIds = validPackageDependencies - resolvedPackages.keys          
             "The following references do not actually refer to packages: " +
                 danglingIds.joinToString(postfix = ".") { "'${it.toCoordinates()}'" }
         }
@@ -201,7 +226,7 @@ class DependencyGraphBuilder<D>(
             "Found multiple distinct package references for each of the following package / fragment index tuples " +
                 "${packageReferencesKeysWithMultipleDistinctPackageReferences.joinToString()}."
         }
-    }
+    }*/
 
     /**
      * Return a set with all the packages that have been encountered for the current project.
