@@ -23,6 +23,7 @@ import io.kotest.core.spec.style.WordSpec
 import io.kotest.inspectors.forAll
 import io.kotest.matchers.collections.beEmpty
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
+import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNot
 
@@ -36,7 +37,7 @@ import org.ossreviewtoolkit.utils.test.readResourceValue
 class OsvFunTest : WordSpec({
     "retrievePackageFindings()" should {
         "return the vulnerabilities for the supported ecosystems" {
-            val osv = createOsv()
+            val osv = OsvFactory.create()
             val dummyPackage = "A:dummy:package:1.2.3"
             val packageCoordinates = setOf(
                 dummyPackage,
@@ -58,12 +59,15 @@ class OsvFunTest : WordSpec({
 
             packageFindings.keys shouldContainExactlyInAnyOrder packageCoordinates - dummyPackage
             packageFindings.keys.forAll { coordinates ->
-                packageFindings.getValue(coordinates).vulnerabilities shouldNot beEmpty()
+                with(packageFindings.getValue(coordinates)) {
+                    vulnerabilities shouldNot beEmpty()
+                    summary.issues should beEmpty()
+                }
             }
         }
 
         "return the expected result for the given package(s)" {
-            val osv = createOsv()
+            val osv = OsvFactory.create()
 
             // The following packages have been chosen because they have only one vulnerability with the oldest possible
             // modified date from the current OSV database, in order to hopefully minimize the flakiness.
@@ -90,7 +94,7 @@ class OsvFunTest : WordSpec({
         }
 
         "return the vulnerabilities for the commit of Hadoop 3.3.1" {
-            val osv = createOsv()
+            val osv = OsvFactory.create()
             val pkg = Package.EMPTY.copy(
                 vcsProcessed = VcsInfo.EMPTY.copy(revision = "a3b9c37a397ad4188041dd80621bdeefc46885f2")
             )
@@ -107,5 +111,3 @@ class OsvFunTest : WordSpec({
         }
     }
 })
-
-private fun createOsv(): Osv = OsvFactory.create()

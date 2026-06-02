@@ -20,7 +20,13 @@
       "group" : "@ort",
       "name" : "project-without-findings",
       "version" : "1.0",
-      "description" : ""
+      "description" : "",
+      "properties" : [
+        {
+          "name" : "ort:effectiveLicense",
+          "value" : "NONE"
+        }
+      ]
     },
     "licenses" : [
       {
@@ -46,6 +52,28 @@
       "type" : "other",
       "url" : "pkg:npm/%40ort/project-without-findings@1.0",
       "comment" : "Package-URL of the project"
+    }
+  ],
+  "vulnerabilities" : [
+    {
+      "id" : "CVE-2021-1234",
+      "ratings" : [
+        {
+          "source" : {
+            "url" : "https://cves.example.org/cve1"
+          },
+          "score" : 6.0,
+          "severity" : "medium",
+          "method" : "CVSSv2"
+        }
+      ],
+      "description" : "A vulnerability description",
+      "detail" : "A vulnerability summary",
+      "affects" : [
+        {
+          "ref" : "NPM:@ort:declared-license:1.0"
+        }
+      ]
     }
   ]
 }

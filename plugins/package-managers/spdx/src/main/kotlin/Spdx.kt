@@ -50,9 +50,8 @@ import org.ossreviewtoolkit.plugins.api.OrtPlugin
 import org.ossreviewtoolkit.plugins.api.PluginDescriptor
 import org.ossreviewtoolkit.utils.common.enumSetOf
 import org.ossreviewtoolkit.utils.ort.DeclaredLicenseProcessor
-import org.ossreviewtoolkit.utils.spdx.toExpression
-import org.ossreviewtoolkit.utils.spdx.toSpdx
-import org.ossreviewtoolkit.utils.spdx.toSpdxOrNull
+import org.ossreviewtoolkit.utils.spdxexpression.toExpression
+import org.ossreviewtoolkit.utils.spdxexpression.toSpdxOrNull
 
 import org.spdx.library.SpdxModelFactory
 import org.spdx.library.model.v3_0_1.core.Element
@@ -94,9 +93,9 @@ class Spdx(override val descriptor: PluginDescriptor = SpdxFactory.descriptor) :
     ): List<ProjectAnalyzerResult> {
         val spdxDocument = parseSpdx3File(definitionFile)
 
-        val counts = spdxDocument.elements.groupingBy { it.type }.eachCount().toSortedMap()
-
         logger.debug {
+            val counts = spdxDocument.elements.groupingBy { it.type }.eachCount().toSortedMap()
+
             counts.entries.joinToString("\n", prefix = "Found ${spdxDocument.elements.size} SPDX element(s):\n") {
                 "\t${it.key}: ${it.value}"
             }
@@ -202,7 +201,7 @@ class Spdx(override val descriptor: PluginDescriptor = SpdxFactory.descriptor) :
         }.firstNotNullOfOrNull { it.identifier }
 
         // Prefer a PURL as it might contain proper type and namespace information.
-        val id = purl?.toPackageUrl()?.toIdentifier() ?: Identifier(
+        val ortId = purl?.toPackageUrl()?.toIdentifier() ?: Identifier(
             type = PACKAGE_TYPE_SPDX,
             namespace = "",
             name = pkgName,
@@ -233,14 +232,14 @@ class Spdx(override val descriptor: PluginDescriptor = SpdxFactory.descriptor) :
         val description = description.getOrNull() ?: summary.getOrNull()
 
         return Package(
-            id = id,
-            purl = purl ?: id.toPurl(),
+            id = ortId,
+            purl = purl ?: ortId.toPurl(),
             cpe = cpe,
             authors = emptySet(),
             declaredLicenses = declaredLicenses,
             concludedLicense = if (concludedLicenses.size > 1) {
-                logger.warn { "Multiple concluded licenses found for package '$name', using only the first one." }
-                concludedLicenses.first().toSpdx()
+                logger.warn { "Multiple concluded licenses found for ID $id, using their conjunction." }
+                concludedLicenses.mapNotNull { it.toSpdxOrNull() }.toExpression()
             } else {
                 concludedLicenses.singleOrNull()?.toSpdxOrNull()
             },

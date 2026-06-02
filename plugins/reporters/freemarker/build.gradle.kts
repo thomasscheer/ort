@@ -25,20 +25,18 @@ plugins {
 dependencies {
     api(projects.model)
     api(projects.reporter)
-    api(projects.utils.spdxUtils)
-
-    ksp(projects.reporter)
-
-    implementation(projects.utils.commonUtils)
-    implementation(projects.utils.ortUtils)
 
     implementation(libs.freemarker)
+    implementation(projects.utils.commonUtils)
+    implementation(projects.utils.spdxUtils)
 
+    funTestImplementation(testFixtures(projects.reporter))
     funTestImplementation(projects.plugins.licenseFactProviders.spdxLicenseFactProvider)
     funTestImplementation(projects.utils.testUtils)
-    funTestImplementation(testFixtures(projects.reporter))
-
-    testImplementation(projects.utils.testUtils)
 
     testImplementation(libs.mockk)
+    testImplementation(projects.utils.ortUtils)
+    testImplementation(projects.utils.testUtils)
+
+    ksp(projects.reporter)
 }

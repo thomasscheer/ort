@@ -31,6 +31,76 @@ plugins {
     alias(libs.plugins.ideaExt)
 }
 
+dependencyAnalysis {
+    issues {
+        all {
+            onUnusedDependencies {
+                severity("fail")
+
+                // Exclude modules which are automatically added by the "ort-kotlin-conventions".
+                exclude("org.junit.jupiter:junit-jupiter")
+                exclude(libs.kotest.runner.junit5)
+                exclude(libs.kotest.assertions.core)
+                exclude(libs.kotest.property)
+                exclude(libs.log4j.api.kotlin)
+            }
+
+            onUsedTransitiveDependencies {
+                // Ignore this rule for now as it creates a massive amount of findings.
+                severity("ignore")
+            }
+
+            onIncorrectConfiguration { severity("fail") }
+            onCompileOnly { severity("fail") }
+            onRuntimeOnly { severity("fail") }
+            onUnusedAnnotationProcessors { severity("fail") }
+            onRedundantPlugins { severity("fail") }
+        }
+
+        val cliCommandRegex = Regex("^cli.*|.*-command$")
+        subprojects.forEach { subproject ->
+            if (subproject.name.matches(cliCommandRegex)) {
+                project(subproject.path) {
+                    onUnusedDependencies {
+                        exclude(libs.clikt)
+                        exclude(libs.mordant)
+                    }
+                }
+            }
+        }
+
+        project(projects.cliHelper) {
+            onUnusedDependencies {
+                exclude(libs.xz)
+            }
+        }
+
+        project(projects.cliTestLauncher) {
+            onUnusedDependencies {
+                severity("ignore")
+            }
+        }
+
+        project(projects.notifier) {
+            onUnusedDependencies {
+                exclude(libs.jiraRestClient.app)
+            }
+        }
+
+        project(projects.plugins.packageManagers.bundlerPackageManager) {
+            onUnusedDependencies {
+                exclude(libs.jruby)
+            }
+        }
+    }
+
+    reporting {
+        printBuildHealth(true)
+    }
+
+    useTypesafeProjectAccessors(true)
+}
+
 semver {
     // Do not create an empty release commit when running the "releaseVersion" task.
     createReleaseCommit = false

@@ -38,9 +38,9 @@ import org.ossreviewtoolkit.model.Snippet
 import org.ossreviewtoolkit.model.SnippetFinding
 import org.ossreviewtoolkit.model.TextLocation
 import org.ossreviewtoolkit.utils.spdx.SpdxConstants
-import org.ossreviewtoolkit.utils.spdx.SpdxExpression
-import org.ossreviewtoolkit.utils.spdx.SpdxLicenseIdExpression
-import org.ossreviewtoolkit.utils.spdx.toExpression
+import org.ossreviewtoolkit.utils.spdxexpression.SpdxExpression
+import org.ossreviewtoolkit.utils.spdxexpression.SpdxLicenseIdExpression
+import org.ossreviewtoolkit.utils.spdxexpression.toExpression
 
 private val logger = loggerOf(MethodHandles.lookup().lookupClass())
 
@@ -58,6 +58,7 @@ internal fun generateSummary(startTime: Instant, endTime: Instant, results: List
             when (details.matchType) {
                 MatchType.file -> {
                     val localFile = requireNotNull(result.filePath)
+                    logger.info { "File '$localFile' was matched completely, not including in snippet findings." }
                     licenseFindings += getLicenseFindings(details, localFile)
                     copyrightFindings += getCopyrightFindings(details, localFile)
                 }
@@ -65,9 +66,10 @@ internal fun generateSummary(startTime: Instant, endTime: Instant, results: List
                 MatchType.snippet -> {
                     val localFile = requireNotNull(result.filePath)
                     if (details.status == StatusType.pending) {
+                        logger.info { "Adding snippet for '$localFile' as identification is pending." }
                         snippetFindings += createSnippetFindings(details, localFile)
                     } else {
-                        logger.info { "File '$localFile' is identified, not including in snippet findings." }
+                        logger.info { "File '$localFile' was identified, not including in snippet findings." }
                         licenseFindings += getLicenseFindings(details, result.filePath)
                         copyrightFindings += getCopyrightFindings(details, result.filePath)
                     }
@@ -153,13 +155,21 @@ private fun createSnippetFindings(details: ScanFileDetails, localFilePath: Strin
         .map { license -> SpdxExpression.parse(license.name) }
         .toExpression()?.sorted() ?: SpdxLicenseIdExpression(SpdxConstants.NOASSERTION)
 
-    // TODO: No resolved revision is available. Should a ArtifactProvenance be created instead ?
+    // TODO: No resolved revision is available. Should a ArtifactProvenance be created instead?
     val vcsInfo = VcsHost.parseUrl(url.takeUnless { it == "none" }.orEmpty())
     val provenance = RepositoryProvenance(vcsInfo, ".")
 
     val additionalData = buildMap {
+        put("component", details.component)
+        put("vendor", details.vendor)
+        put("version", details.version)
+        put("latest", details.latest)
+
         put("file_hash", details.fileHash)
         if (details.fileUrl.isNotBlank()) put("file_url", details.fileUrl)
+
+        put("url_hash", details.urlHash)
+        put("release_date", details.releaseDate)
         put("source_hash", details.sourceHash)
 
         // Purls can be empty if only one entry is provided which is used as the primary purl.

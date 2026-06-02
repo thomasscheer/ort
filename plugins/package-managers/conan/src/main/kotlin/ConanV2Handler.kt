@@ -46,9 +46,10 @@ import org.ossreviewtoolkit.utils.ort.createOrtTempDir
  * commands or call common functions.
  */
 internal class ConanV2Handler(private val conan: Conan) : ConanVersionHandler {
-    override fun getConanHome(): File = Os.userHomeDirectory.resolve(".conan2")
+    override fun getConanHome(): File =
+        Os.env["CONAN_HOME"]?.let { File(it) } ?: Os.userHomeDirectory.resolve(".conan2")
 
-    override fun getConanStoragePath(): File = getConanHome().resolve("p")
+    override fun getConanPackageStoragePath(): File = getConanHome().resolve("p")
 
     override fun process(definitionFile: File, lockfileName: String?, conanProfile: File?): HandlerResults {
         val workingDir = definitionFile.parentFile
@@ -79,6 +80,8 @@ internal class ConanV2Handler(private val conan: Conan) : ConanVersionHandler {
             workingDir,
             "graph",
             "info",
+            "-cc",
+            "core:non_interactive=True",
             "-f",
             "json",
             "--out-file",
@@ -187,7 +190,7 @@ internal class ConanV2Handler(private val conan: Conan) : ConanVersionHandler {
         val homepageUrl = pkgInfo.homepage.orEmpty()
 
         val id = parsePackageId(pkgInfo)
-        val conanData = conan.readConanData(id, conan.conanStoragePath, pkgInfo.recipeFolder)
+        val conanData = conan.readConanData(id, getConanPackageStoragePath(), pkgInfo.recipeFolder)
 
         return Package(
             id = id,
@@ -196,7 +199,14 @@ internal class ConanV2Handler(private val conan: Conan) : ConanVersionHandler {
             description = pkgInfo.description.orEmpty(),
             homepageUrl = homepageUrl,
             binaryArtifact = RemoteArtifact.EMPTY, // TODO: implement me!
-            sourceArtifact = conan.parseSourceArtifact(conanData),
+            sourceArtifact = conan.parseSourceArtifacts(conanData).also {
+                if (it.size > 1) {
+                    logger.warn {
+                        "Package '${id.toCoordinates()}' has ${it.size} source archives. " +
+                            "Only the first one will be used as the source artifact."
+                    }
+                }
+            }.firstOrNull() ?: RemoteArtifact.EMPTY,
             vcs = processPackageVcs(
                 conanData.toVcsInfo(),
                 homepageUrl

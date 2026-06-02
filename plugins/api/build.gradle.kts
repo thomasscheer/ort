@@ -23,7 +23,6 @@ plugins {
 }
 
 dependencies {
-    api(projects.utils.commonUtils)
-
-    api(jacksonLibs.jacksonAnnotations)
+    implementation(jacksonLibs.jacksonAnnotations)
+    implementation(projects.utils.commonUtils)
 }

@@ -71,7 +71,7 @@ import org.ossreviewtoolkit.utils.common.safeDeleteRecursively
 import org.ossreviewtoolkit.utils.ort.Environment
 import org.ossreviewtoolkit.utils.ort.showStackTrace
 import org.ossreviewtoolkit.utils.spdx.SpdxConstants
-import org.ossreviewtoolkit.utils.spdx.toSpdx
+import org.ossreviewtoolkit.utils.spdxexpression.toSpdx
 
 class Scanner(
     val scannerConfig: ScannerConfiguration,
@@ -763,7 +763,7 @@ class Scanner(
                 // runCatching has a bug with smart-cast, see https://youtrack.jetbrains.com/issue/KT-27748.
                 try {
                     dir = provenanceDownloader.downloadRecursively(nestedProvenance)
-                    archiver.archive(dir, nestedProvenance.root, pkg.id)
+                    archiver.archive(dir, nestedProvenance.root)
                 } catch (e: DownloadException) {
                     controller.addIssue(
                         pkg.id,

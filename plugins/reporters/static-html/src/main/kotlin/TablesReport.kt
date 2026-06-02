@@ -31,7 +31,7 @@ import org.ossreviewtoolkit.model.config.PathExclude
 import org.ossreviewtoolkit.model.config.RepositoryConfiguration
 import org.ossreviewtoolkit.model.config.ScopeExclude
 import org.ossreviewtoolkit.model.licenses.ResolvedLicense
-import org.ossreviewtoolkit.utils.spdx.SpdxExpression
+import org.ossreviewtoolkit.utils.spdxexpression.SpdxExpression
 
 internal data class TablesReport(
     /**
@@ -184,7 +184,7 @@ internal data class ProjectTable(
         val excludedOrResolvedIssues: List<TablesReportIssue>
     ) {
         /**
-         * Return true if and only if this [Row] is excluded by any [ScopeExclude]s
+         * Return true if this [Row] is excluded by any [ScopeExclude]s
          */
         fun isExcluded(): Boolean = scopes.isNotEmpty() && scopes.all { it.isExcluded() }
     }
@@ -201,7 +201,7 @@ internal data class ProjectTable(
         val excludes: List<ScopeExclude>
     ) {
         /**
-         * Return true if an only if this scope is matched by any [ScopeExclude]'s.
+         * Return true if this scope is matched by any [ScopeExclude]'s.
          */
         fun isExcluded(): Boolean = excludes.isNotEmpty()
     }

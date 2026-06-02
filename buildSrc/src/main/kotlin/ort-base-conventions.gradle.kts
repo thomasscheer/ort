@@ -17,6 +17,11 @@
  * License-Filename: LICENSE
  */
 
+plugins {
+    // Apply third-party plugins.
+    id("com.squareup.sort-dependencies")
+}
+
 repositories {
     mavenCentral()
 
@@ -73,10 +78,18 @@ repositories {
 }
 
 configurations.all {
-    resolutionStrategy.dependencySubstitution {
-        substitute(module("org.lz4:lz4-java"))
-            .using(module("at.yawk.lz4:lz4-java:1.11.0"))
-            .because("lz4-java is unmaintained and vulnerable to CVE‐2025‐12183")
+    resolutionStrategy {
+        dependencySubstitution {
+            substitute(module("org.lz4:lz4-java"))
+                .using(module("at.yawk.lz4:lz4-java:1.11.0"))
+                .because("lz4-java is unmaintained and vulnerable to CVE‐2025‐12183")
+        }
+
+        dependencySubstitution {
+            substitute(module("org.slf4j:slf4j-api"))
+                .using(module("org.slf4j:slf4j-api:2.0.18"))
+                .because("https://github.com/gradle/gradle/issues/37947")
+        }
     }
 }
 

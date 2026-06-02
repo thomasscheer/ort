@@ -25,20 +25,16 @@ plugins {
 dependencies {
     api(projects.plugins.commands.commandApi)
 
-    ksp(projects.plugins.commands.commandApi)
-
-    implementation(projects.analyzer)
-    implementation(projects.model)
-    implementation(projects.utils.commonUtils)
-    implementation(projects.utils.spdxUtils)
-
     // Changing this to "runtimeOnly" triggers "Call uses reflection API which is not found in compilation classpath".
     implementation("org.jetbrains.kotlin:kotlin-reflect")
 
     implementation(libs.clikt)
     implementation(libs.reflections)
     implementation(libs.semver4j)
+    implementation(projects.utils.commonUtils)
 
     funTestImplementation(platform(projects.plugins.packageManagers))
     funTestImplementation(platform(projects.plugins.scanners))
+
+    ksp(projects.plugins.commands.commandApi)
 }

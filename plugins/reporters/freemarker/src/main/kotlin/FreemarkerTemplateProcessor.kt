@@ -54,7 +54,7 @@ import org.ossreviewtoolkit.reporter.ReporterInput
 import org.ossreviewtoolkit.utils.common.div
 import org.ossreviewtoolkit.utils.common.expandTilde
 import org.ossreviewtoolkit.utils.spdx.SpdxConstants
-import org.ossreviewtoolkit.utils.spdx.SpdxLicenseChoice
+import org.ossreviewtoolkit.utils.spdxexpression.SpdxLicenseChoice
 
 /**
  * A class to process [Apache Freemarker][1] templates, intended to be called by a [Reporter] that uses the generated
@@ -282,7 +282,7 @@ class FreemarkerTemplateProcessor(
                 .sortedBy { it.license.toString() }
 
         /**
-         * Return true if and only if the given [license] is not one of the special cases _NONE_ or _NOASSERTION_.
+         * Return true if the given [license] is not one of the special cases _NONE_ or _NOASSERTION_.
          */
         @Suppress("MemberVisibilityCanBePrivate") // This function is used in the templates.
         fun isLicensePresent(license: ResolvedLicense): Boolean = SpdxConstants.isPresent(license.license.toString())

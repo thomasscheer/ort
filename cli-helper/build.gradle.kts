@@ -31,6 +31,13 @@ application {
 }
 
 dependencies {
+    implementation(jacksonLibs.jacksonModuleKotlin)
+    implementation(libs.clikt)
+    implementation(libs.commonsCompress)
+    implementation(libs.jslt)
+    implementation(libs.log4j.api)
+    implementation(libs.slf4j)
+    implementation(libs.xz)
     implementation(projects.analyzer)
     implementation(projects.downloader)
 
@@ -39,21 +46,16 @@ dependencies {
     implementation(projects.plugins.packageCurationProviders.filePackageCurationProvider)
 
     implementation(projects.scanner)
+    implementation(projects.utils.commonUtils)
     implementation(projects.utils.configUtils)
     implementation(projects.utils.ortUtils)
-
-    implementation(jacksonLibs.jacksonModuleKotlin)
-    implementation(libs.clikt)
-    implementation(libs.commonsCompress)
-    implementation(libs.jslt)
-    implementation(libs.log4j.api)
-    implementation(libs.slf4j)
-    implementation(libs.xz)
-
-    "pluginClasspath"(platform(projects.plugins.packageManagers))
-    "pluginClasspath"(platform(projects.plugins.versionControlSystems))
+    implementation(projects.utils.spdxExpressionUtils)
+    implementation(projects.utils.spdxUtils)
 
     funTestImplementation(projects.utils.testUtils)
 
     testImplementation(projects.utils.testUtils)
+
+    "pluginClasspath"(platform(projects.plugins.packageManagers))
+    "pluginClasspath"(platform(projects.plugins.versionControlSystems))
 }
